@@ -19,12 +19,8 @@ from labelx.utils import newIcon
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--version", "-V", action="store_true", help="show version"
-    )
-    parser.add_argument(
-        "--reset-config", action="store_true", help="reset qt config"
-    )
+    parser.add_argument("--version", "-V", action="store_true", help="show version")
+    parser.add_argument("--reset-config", action="store_true", help="reset qt config")
     parser.add_argument(
         "--logger-level",
         default="info",
@@ -43,9 +39,7 @@ def main():
     parser.add_argument(
         "--config",
         dest="config",
-        help="config file or yaml-format string (default: {})".format(
-            default_config_file
-        ),
+        help="config file or yaml-format string (default: {})".format(default_config_file),
         default=default_config_file,
     )
     # config for the gui
@@ -56,6 +50,8 @@ def main():
         help="stop storing image data to JSON file",
         default=argparse.SUPPRESS,
     )
+    # TODO: 研究 argparse.SUPPRESS 什么意思
+    # TODO: 研究parser怎么实现的覆盖，文件和命令行的优先级
     parser.add_argument(
         "--autosave",
         dest="auto_save",
@@ -160,6 +156,7 @@ def main():
         else:
             output_dir = output
 
+    # TODO: 研究如何实现的多语言支持，整理如何添加语言，添加多个语言
     translator = QtCore.QTranslator()
     translator.load(
         QtCore.QLocale.system().name(),

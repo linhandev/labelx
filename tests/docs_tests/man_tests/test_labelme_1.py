@@ -11,16 +11,16 @@ import sys
 
 here = osp.dirname(osp.abspath(__file__))
 
-cmd = "help2man labelme"
+cmd = "help2man labelx"
 man_expected = subprocess.check_output(shlex.split(cmd)).decode().splitlines()
 
-man_file = osp.realpath(osp.join(here, "../../../docs/man/labelme.1"))
+man_file = osp.realpath(osp.join(here, "../../../docs/man/labelx.1"))
 with open(man_file) as f:
     man_actual = f.read().splitlines()
 
 patterns_exclude = [
     r"^\.TH .*",
-    r"^.*/\.labelmerc\)$",
+    r"^.*/\.labelxrc\)$",
     r"^\.\\.*",
 ]
 
@@ -37,7 +37,7 @@ for line_expected, line_actual in zip(man_expected, man_actual):
 
 if not PASS:
     print(
-        "Please run:\n\n\thelp2man labelme > {}\n".format(man_file),
+        "Please run:\n\n\thelp2man labelx > {}\n".format(man_file),
         file=sys.stderr,
     )
 assert PASS

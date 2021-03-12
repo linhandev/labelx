@@ -4,7 +4,7 @@
 ## Usage
 
 ```bash
-labelme data_annotated --labels labels.txt --nodata --autosave
+labelx data_annotated --labels labels.txt --nodata --autosave
 ```
 
 ![](.readme/annotation.jpg)
@@ -17,7 +17,7 @@ labelme data_annotated --labels labels.txt --nodata --autosave
 #   - data_dataset_voc/JPEGImages
 #   - data_dataset_voc/Annotations
 #   - data_dataset_voc/AnnotationsVisualization
-./labelme2voc.py data_annotated data_dataset_voc --labels labels.txt
+./labelx2voc.py data_annotated data_dataset_voc --labels labels.txt
 ```
 
 <img src="data_dataset_voc/JPEGImages/2011_000003.jpg" width="33%" /> <img src="data_dataset_voc/AnnotationsVisualization/2011_000003.jpg" width="33%" />

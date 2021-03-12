@@ -3,7 +3,7 @@
 ## Annotation
 
 ```bash
-labelme data_annotated --labels labels.txt --nodata --validatelabel exact --config '{shift_auto_shape_color: -2}'
+labelx data_annotated --labels labels.txt --nodata --validatelabel exact --config '{shift_auto_shape_color: -2}'
 ```
 
 ![](.readme/annotation.jpg)
@@ -16,7 +16,7 @@ labelme data_annotated --labels labels.txt --nodata --validatelabel exact --conf
 #   - data_dataset_voc/JPEGImages
 #   - data_dataset_voc/SegmentationClass
 #   - data_dataset_voc/SegmentationClassVisualization
-./labelme2voc.py data_annotated data_dataset_voc --labels labels.txt
+./labelx2voc.py data_annotated data_dataset_voc --labels labels.txt
 ```
 
 <img src="data_dataset_voc/JPEGImages/2011_000003.jpg" width="33%" /> <img src="data_dataset_voc/SegmentationClassPNG/2011_000003.png" width="33%" /> <img src="data_dataset_voc/SegmentationClassVisualization/2011_000003.jpg" width="33%" />
@@ -29,7 +29,7 @@ Note that the label file contains only very low label values (ex. `0, 4, 14`), a
 You can see the label PNG file by following.
 
 ```bash
-labelme_draw_label_png data_dataset_voc/SegmentationClassPNG/2011_000003.png
+labelx_draw_label_png data_dataset_voc/SegmentationClassPNG/2011_000003.png
 ```
 
 <img src=".readme/draw_label_png.jpg" width="33%" />

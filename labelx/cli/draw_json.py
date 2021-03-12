@@ -6,8 +6,8 @@ import sys
 import imgviz
 import matplotlib.pyplot as plt
 
-from labelme.label_file import LabelFile
-from labelme import utils
+from labelx.label_file import LabelFile
+from labelx import utils
 
 
 PY2 = sys.version_info[0] == 2

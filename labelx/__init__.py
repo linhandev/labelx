@@ -6,7 +6,7 @@ import sys
 from qtpy import QT_VERSION
 
 
-__appname__ = "labelme"
+__appname__ = "labelx"
 
 # Semantic Versioning 2.0.0: https://semver.org/
 # 1. MAJOR version when you make incompatible API changes;
@@ -22,6 +22,6 @@ PY2 = sys.version[0] == "2"
 PY3 = sys.version[0] == "3"
 del sys
 
-from labelme.label_file import LabelFile
-from labelme import testing
-from labelme import utils
+from labelx.label_file import LabelFile
+from labelx import testing
+from labelx import utils

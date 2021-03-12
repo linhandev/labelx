@@ -4,7 +4,7 @@
 ## Annotation
 
 ```bash
-labelme data_annotated --labels labels.txt --nodata --keep-prev --config '{shift_auto_shape_color: -2}'
+labelx data_annotated --labels labels.txt --nodata --keep-prev --config '{shift_auto_shape_color: -2}'
 ```
 
 <img src=".readme/00000100.jpg" width="49%" /> <img src=".readme/00000101.jpg" width="49%" />
@@ -27,5 +27,5 @@ pip install imageio imageio-ffmpeg tqdm
 python video_to_images your_video.mp4  # this creates your_video/ directory
 ls your_video/
 
-labelme your_video/
+labelx your_video/
 ```

@@ -11,7 +11,7 @@ import sys
 import imgviz
 import numpy as np
 
-import labelme
+import labelx
 
 
 def main():
@@ -67,7 +67,7 @@ def main():
     for filename in glob.glob(osp.join(args.input_dir, "*.json")):
         print("Generating dataset from:", filename)
 
-        label_file = labelme.LabelFile(filename=filename)
+        label_file = labelx.LabelFile(filename=filename)
 
         base = osp.splitext(osp.basename(filename))[0]
         out_img_file = osp.join(args.output_dir, "JPEGImages", base + ".jpg")
@@ -96,10 +96,10 @@ def main():
                 base + ".jpg",
             )
 
-        img = labelme.utils.img_data_to_arr(label_file.imageData)
+        img = labelx.utils.img_data_to_arr(label_file.imageData)
         imgviz.io.imsave(out_img_file, img)
 
-        cls, ins = labelme.utils.shapes_to_label(
+        cls, ins = labelx.utils.shapes_to_label(
             img_shape=img.shape,
             shapes=label_file.shapes,
             label_name_to_value=class_name_to_id,
@@ -107,7 +107,7 @@ def main():
         ins[cls == -1] = 0  # ignore it.
 
         # class label
-        labelme.utils.lblsave(out_clsp_file, cls)
+        labelx.utils.lblsave(out_clsp_file, cls)
         np.save(out_cls_file, cls)
         if not args.noviz:
             clsv = imgviz.label2rgb(
@@ -120,7 +120,7 @@ def main():
             imgviz.io.imsave(out_clsv_file, clsv)
 
         # instance label
-        labelme.utils.lblsave(out_insp_file, ins)
+        labelx.utils.lblsave(out_insp_file, ins)
         np.save(out_ins_file, ins)
         if not args.noviz:
             instance_ids = np.unique(ins)

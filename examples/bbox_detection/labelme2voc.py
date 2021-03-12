@@ -9,7 +9,7 @@ import os.path as osp
 import sys
 
 import imgviz
-import labelme
+import labelx
 
 try:
     import lxml.builder
@@ -63,7 +63,7 @@ def main():
     for filename in glob.glob(osp.join(args.input_dir, "*.json")):
         print("Generating dataset from:", filename)
 
-        label_file = labelme.LabelFile(filename=filename)
+        label_file = labelx.LabelFile(filename=filename)
 
         base = osp.splitext(osp.basename(filename))[0]
         out_img_file = osp.join(args.output_dir, "JPEGImages", base + ".jpg")
@@ -73,7 +73,7 @@ def main():
                 args.output_dir, "AnnotationsVisualization", base + ".jpg"
             )
 
-        img = labelme.utils.img_data_to_arr(label_file.imageData)
+        img = labelx.utils.img_data_to_arr(label_file.imageData)
         imgviz.io.imsave(out_img_file, img)
 
         maker = lxml.builder.ElementMaker()

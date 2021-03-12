@@ -8,12 +8,12 @@ sys.setrecursionlimit(5000)  # required on Windows
 
 
 a = Analysis(
-    ['labelme/__main__.py'],
-    pathex=['labelme'],
+    ['labelx/__main__.py'],
+    pathex=['labelx'],
     binaries=[],
     datas=[
-        ('labelme/config/default_config.yaml', 'labelme/config'),
-        ('labelme/icons/*', 'labelme/icons'),
+        ('labelx/config/default_config.yaml', 'labelx/config'),
+        ('labelx/icons/*', 'labelx/icons'),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -27,18 +27,18 @@ exe = EXE(
     a.binaries,
     a.zipfiles,
     a.datas,
-    name='labelme',
+    name='labelx',
     debug=False,
     strip=False,
     upx=True,
     runtime_tmpdir=None,
     console=False,
-    icon='labelme/icons/icon.ico',
+    icon='labelx/icons/icon.ico',
 )
 app = BUNDLE(
     exe,
-    name='Labelme.app',
-    icon='labelme/icons/icon.icns',
+    name='labelx.app',
+    icon='labelx/icons/icon.icns',
     bundle_identifier=None,
     info_plist={'NSHighResolutionCapable': 'True'},
 )

@@ -1,8 +1,8 @@
 from qtpy import QtCore
 from qtpy import QtWidgets
 
-from labelme.widgets import LabelDialog
-from labelme.widgets import LabelQLineEdit
+from labelx.widgets import LabelDialog
+from labelx.widgets import LabelQLineEdit
 
 
 def test_LabelQLineEdit(qtbot):

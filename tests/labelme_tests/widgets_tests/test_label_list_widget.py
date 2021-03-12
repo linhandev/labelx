@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
-from labelme.widgets import LabelListWidget
-from labelme.widgets import LabelListWidgetItem
+from labelx.widgets import LabelListWidget
+from labelx.widgets import LabelListWidgetItem
 
 
 def test_LabelListWidget(qtbot):

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import PIL.Image
 
-from labelme.logger import logger
+from labelx.logger import logger
 
 
 def main():

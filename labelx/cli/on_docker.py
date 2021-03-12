@@ -33,7 +33,7 @@ def get_ip():
         raise RuntimeError("Unsupported platform.")
 
 
-def labelme_on_docker(in_file, out_file):
+def labelx_on_docker(in_file, out_file):
     ip = get_ip()
     cmd = "xhost + %s" % ip
     subprocess.check_output(shlex.split(cmd))
@@ -64,7 +64,7 @@ def labelme_on_docker(in_file, out_file):
         out_file_a = osp.abspath(out_file)
         out_file_b = osp.join("/home/developer", osp.basename(out_file))
         cmd += " -v {0}:{1}".format(out_file_a, out_file_b)
-    cmd += " wkentaro/labelme labelme {0}".format(in_file_b)
+    cmd += " wkentaro/labelx labelx {0}".format(in_file_b)
     if out_file:
         cmd += " -O {0}".format(out_file_b)
     subprocess.call(shlex.split(cmd))
@@ -90,7 +90,7 @@ def main():
         sys.exit(1)
 
     try:
-        out_file = labelme_on_docker(args.in_file, args.output)
+        out_file = labelx_on_docker(args.in_file, args.output)
         if out_file:
             print("Saved to: %s" % out_file)
     except RuntimeError as e:

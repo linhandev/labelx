@@ -3,7 +3,7 @@ import shutil
 
 import yaml
 
-from labelme.logger import logger
+from labelx.logger import logger
 
 
 here = osp.dirname(osp.abspath(__file__))
@@ -30,8 +30,8 @@ def get_default_config():
     with open(config_file) as f:
         config = yaml.safe_load(f)
 
-    # save default config to ~/.labelmerc
-    user_config_file = osp.join(osp.expanduser("~"), ".labelmerc")
+    # save default config to ~/.labelxrc
+    user_config_file = osp.join(osp.expanduser("~"), ".labelxrc")
     if not osp.exists(user_config_file):
         try:
             shutil.copy(config_file, user_config_file)

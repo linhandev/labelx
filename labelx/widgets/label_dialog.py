@@ -5,8 +5,8 @@ from qtpy import QtCore
 from qtpy import QtGui
 from qtpy import QtWidgets
 
-from labelme.logger import logger
-import labelme.utils
+from labelx.logger import logger
+import labelx.utils
 
 
 QT5 = QT_VERSION[0] == "5"
@@ -46,7 +46,7 @@ class LabelDialog(QtWidgets.QDialog):
         super(LabelDialog, self).__init__(parent)
         self.edit = LabelQLineEdit()
         self.edit.setPlaceholderText(text)
-        self.edit.setValidator(labelme.utils.labelValidator())
+        self.edit.setValidator(labelx.utils.labelValidator())
         self.edit.editingFinished.connect(self.postProcess)
         if flags:
             self.edit.textChanged.connect(self.updateFlags)
@@ -67,8 +67,8 @@ class LabelDialog(QtWidgets.QDialog):
             QtCore.Qt.Horizontal,
             self,
         )
-        bb.button(bb.Ok).setIcon(labelme.utils.newIcon("done"))
-        bb.button(bb.Cancel).setIcon(labelme.utils.newIcon("undo"))
+        bb.button(bb.Ok).setIcon(labelx.utils.newIcon("done"))
+        bb.button(bb.Cancel).setIcon(labelx.utils.newIcon("undo"))
         bb.accepted.connect(self.validate)
         bb.rejected.connect(self.reject)
         layout.addWidget(bb)

@@ -88,7 +88,7 @@ class ComponentManager:
     def name(self):
         return self._name
 
-    def _add_single_component(self, component):
+    def _add_single_component(self, component, component_name=None):
         """
         Add a single component into the corresponding manager.
 
@@ -105,19 +105,23 @@ class ComponentManager:
             raise TypeError("Expect class/function type, but received {}".format(type(component)))
 
         # Obtain the internal name of the component
-        component_name = component.__name__
+        if component_name is None:
+            component_name = component.__name__
 
         # Check whether the component was added already
         if component_name in self._components_dict.keys():
             raise KeyError("{} exists already!".format(component_name))
         else:
-            # Take the internal name of the component as its key
+            # Take the name of the component as its key
             self._components_dict[component_name] = component
 
-    def add(self, components):
+    def add(self, components, names=None):
         """
         Add component(s) into the corresponding manager.
-
+        1. components 1个，names 1个：添加一个组件，names None用默认，否则用 names 字符串
+        2. components 1个，names 序列：添加多个组件，名字用 names 里的
+        3. components 序列，names None：添加多个组件，名字用默认
+        4. components 序列，names 序列：添加多个组件，名字用 names 里的
         Args:
             components (function|class|list|tuple): Support four types of components.
 
@@ -127,12 +131,19 @@ class ComponentManager:
 
         # Check whether the type is a sequence
         if isinstance(components, Sequence):
-            for component in components:
-                self._add_single_component(component)
+            if names is None:
+                names = [None for _ in len(components)]
+            if len(components) != len(names):
+                raise KeyError(f"组件{len(components)}和名称{len(names)}数量不同")
+            for component, name in zip(components, names):
+                self._add_single_component(component, name)
         else:
             component = components
-            self._add_single_component(component)
-
+            if isinstance(names, Sequence):
+                for name in names:
+                    self._add_single_component(component, name)
+            else:
+                self._add_single_component(component, names)
         return components
 
 

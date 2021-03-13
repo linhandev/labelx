@@ -89,18 +89,12 @@ class LabelFile(object):
                 data = json.load(f)
             version = data.get("version")
             if version is None:
-                logger.warn(
-                    "Loading JSON file ({}) of unknown version".format(
-                        filename
-                    )
-                )
+                logger.warn("Loading JSON file ({}) of unknown version".format(filename))
             elif version.split(".")[0] != __version__.split(".")[0]:
                 logger.warn(
                     "This JSON file ({}) may be incompatible with "
                     "current labelx. version in file: {}, "
-                    "current version: {}".format(
-                        filename, version, __version__
-                    )
+                    "current version: {}".format(filename, version, __version__)
                 )
 
             if data["imageData"] is not None:
@@ -125,9 +119,7 @@ class LabelFile(object):
                     shape_type=s.get("shape_type", "polygon"),
                     flags=s.get("flags", {}),
                     group_id=s.get("group_id"),
-                    other_data={
-                        k: v for k, v in s.items() if k not in shape_keys
-                    },
+                    other_data={k: v for k, v in s.items() if k not in shape_keys},
                 )
                 for s in data["shapes"]
             ]
@@ -177,9 +169,7 @@ class LabelFile(object):
     ):
         if imageData is not None:
             imageData = base64.b64encode(imageData).decode("utf-8")
-            imageHeight, imageWidth = self._check_image_height_and_width(
-                imageData, imageHeight, imageWidth
-            )
+            imageHeight, imageWidth = self._check_image_height_and_width(imageData, imageHeight, imageWidth)
         if otherData is None:
             otherData = {}
         if flags is None:
@@ -206,3 +196,6 @@ class LabelFile(object):
     @staticmethod
     def is_label_file(filename):
         return osp.splitext(filename)[1].lower() == LabelFile.suffix
+
+
+# print(LabelFile.load_image_file("/home/lin/Desktop/input/avatar.jpg"))

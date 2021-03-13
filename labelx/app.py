@@ -18,6 +18,8 @@ from labelx import PY2
 from labelx import QT5
 
 from . import utils
+from .utils import readers
+
 from labelx.config import get_config
 from labelx.label_file import LabelFile
 from labelx.label_file import LabelFileError
@@ -129,8 +131,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.uniqLabelList.addItem(item)
                 rgb = self._get_rgb_by_label(label)
                 self.uniqLabelList.setItemLabel(item, label, rgb)
-        self.label_dock = QtWidgets.QDockWidget(self.tr(u"Label List"), self)
-        self.label_dock.setObjectName(u"Label List")
+        self.label_dock = QtWidgets.QDockWidget(self.tr("Label List"), self)
+        self.label_dock.setObjectName("Label List")
         self.label_dock.setWidget(self.uniqLabelList)
 
         self.fileSearch = QtWidgets.QLineEdit()
@@ -143,8 +145,8 @@ class MainWindow(QtWidgets.QMainWindow):
         fileListLayout.setSpacing(0)
         fileListLayout.addWidget(self.fileSearch)
         fileListLayout.addWidget(self.fileListWidget)
-        self.file_dock = QtWidgets.QDockWidget(self.tr(u"File List"), self)
-        self.file_dock.setObjectName(u"Files")
+        self.file_dock = QtWidgets.QDockWidget(self.tr("File List"), self)
+        self.file_dock.setObjectName("Files")
         fileListWidget = QtWidgets.QWidget()
         fileListWidget.setLayout(fileListLayout)
         self.file_dock.setWidget(fileListWidget)
@@ -217,14 +219,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.openDirDialog,
             shortcuts["open_dir"],
             "open",
-            self.tr(u"Open Dir"),
+            self.tr("Open Dir"),
         )
         openNextImg = action(
             self.tr("&Next Image"),
             self.openNextImg,
             shortcuts["open_next"],
             "next",
-            self.tr(u"Open next (hold Ctl+Shift to copy labels)"),
+            self.tr("Open next (hold Ctl+Shift to copy labels)"),
             enabled=False,
         )
         openPrevImg = action(
@@ -232,7 +234,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.openPrevImg,
             shortcuts["open_prev"],
             "prev",
-            self.tr(u"Open prev (hold Ctl+Shift to copy labels)"),
+            self.tr("Open prev (hold Ctl+Shift to copy labels)"),
             enabled=False,
         )
         save = action(
@@ -266,7 +268,7 @@ class MainWindow(QtWidgets.QMainWindow):
             slot=self.changeOutputDirDialog,
             shortcut=shortcuts["save_to"],
             icon="open",
-            tip=self.tr(u"Change where annotations are loaded/saved"),
+            tip=self.tr("Change where annotations are loaded/saved"),
         )
 
         saveAuto = action(
@@ -1380,26 +1382,10 @@ class MainWindow(QtWidgets.QMainWindow):
         for item in self.labelList:
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
-    def loadFile(self, filename=None):
-
-        # TODO: 按照文件推展名判断用什么读
-
+    def loadFile(self, filename=None, ext=None):
+        # NOTE: 有些文件可能是不带拓展名的，让用户选作为什么读入，这里直接用那个reader
+        # TODO: 根据拓展名选loader
         """Load the specified file, or the last opened file if None."""
-
-        # 修改右下角文件列表信息
-        if filename in self.imageList and (
-            self.fileListWidget.currentRow() != self.imageList.index(filename)
-        ):
-            self.fileListWidget.setCurrentRow(self.imageList.index(filename))
-            self.fileListWidget.repaint()
-            return
-
-        #
-        self.resetState()
-        self.canvas.setEnabled(False)
-        if filename is None:
-            filename = self.settings.value("filename", "")
-        filename = str(filename)
 
         # 检测文件存在
         if not QtCore.QFile.exists(filename):
@@ -1409,36 +1395,79 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             return False
 
-        # assumes same name, but json extension
-        self.status(self.tr("Loading %s...") % osp.basename(str(filename)))
-        label_file = osp.splitext(filename)[0] + ".json"
-        if self.output_dir:
-            label_file_without_path = osp.basename(label_file)
-            label_file = osp.join(self.output_dir, label_file_without_path)
-        if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(label_file):
-            try:
-                self.labelFile = LabelFile(label_file)
-            except LabelFileError as e:
-                self.errorMessage(
-                    self.tr("Error opening file"),
-                    self.tr("<p><b>%s</b></p>" "<p>Make sure <i>%s</i> is a valid label file.")
-                    % (e, label_file),
-                )
-                self.status(self.tr("Error reading %s") % label_file)
-                return False
-            self.imageData = self.labelFile.imageData
-            self.imagePath = osp.join(
-                osp.dirname(label_file),
-                self.labelFile.imagePath,
-            )
-            self.otherData = self.labelFile.otherData
-        else:
-            self.imageData = LabelFile.load_image_file(filename)
-            if self.imageData:
-                self.imagePath = filename
-            self.labelFile = None
-        image = QtGui.QImage.fromData(self.imageData)
+        parts = filename.split(".")
+        if ext is None:
+            ext = parts[-1] if parts[-1] != "gz" else parts[-2]
 
+        # 修改右下角文件列表信息
+        if filename in self.imageList and (
+            self.fileListWidget.currentRow() != self.imageList.index(filename)
+        ):
+            self.fileListWidget.setCurrentRow(self.imageList.index(filename))
+            self.fileListWidget.repaint()
+            return
+
+        # 修改gui状态
+        self.resetState()
+        self.canvas.setEnabled(False)
+        if filename is None:
+            filename = self.settings.value("filename", "")
+        filename = str(filename)
+
+        self.status(self.tr("Loading %s...") % osp.basename(str(filename)))
+
+        def wwwc(data, wc, ww):
+            data = data.clip(int(wc - ww / 2), int(wc + ww / 2))
+            print(data.min(), data.max())
+            data -= int(wc - ww / 2)
+            print(data.min(), data.max())
+            data = data / ww * (2 ** 8)
+            print(data.min(), data.max())
+            data = data.astype("int8")
+            return data
+
+        # 尝试读取标签文件
+        # TODO: 3d的东西也是一片一个json文件
+        if ext in ["png", "jpeg", "jpg"]:
+            label_file = osp.splitext(filename)[0] + ".json"
+            if self.output_dir:
+                label_file_without_path = osp.basename(label_file)
+                label_file = osp.join(self.output_dir, label_file_without_path)
+            if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(label_file):
+                try:
+                    self.labelFile = LabelFile(label_file)
+                except LabelFileError as e:
+                    self.errorMessage(
+                        self.tr("Error opening file"),
+                        self.tr("<p><b>%s</b></p>" "<p>Make sure <i>%s</i> is a valid label file.")
+                        % (e, label_file),
+                    )
+                    self.status(self.tr("Error reading %s") % label_file)
+                    return False
+                self.imageData = self.labelFile.imageData
+                self.imagePath = osp.join(
+                    osp.dirname(label_file),
+                    self.labelFile.imagePath,
+                )
+                self.otherData = self.labelFile.otherData
+            else:
+                self.imageData, self.dimension = utils.readers[ext](filename)
+                # BUG: 这个if不知道是在干什么
+                if self.imageData is not None:
+                    self.imagePath = filename
+                self.labelFile = None
+
+            image = QtGui.QImage.fromData(self.imageData)
+        else:
+            self.raw, self.dimension = utils.readers[ext](filename)
+            self.imageData = self.raw
+            self.imageData = wwwc(self.imageData, 0, 1000)
+            s = self.imageData.shape
+            image = QtGui.QImage(self.imageData[0].tobytes(), s[1], s[2], QtGui.QImage.Format_Grayscale8)
+
+        # image = QtGui.QImage.fromData(self.imageData)
+
+        # 读取图片出错
         if image.isNull():
             formats = [
                 "*.{}".format(fmt.data().decode()) for fmt in QtGui.QImageReader.supportedImageFormats()
@@ -1451,6 +1480,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             self.status(self.tr("Error reading %s") % filename)
             return False
+
         self.image = image
         self.filename = filename
         if self._config["keep_prev"]:
@@ -1480,11 +1510,12 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.filename in self.scroll_values[orientation]:
                 self.setScroll(orientation, self.scroll_values[orientation][self.filename])
         # set brightness constrast values
-        dialog = BrightnessContrastDialog(
-            utils.img_data_to_pil(self.imageData),
-            self.onNewBrightnessContrast,
-            parent=self,
-        )
+        # TODO: 研究灰度图这块怎么处理
+        # dialog = BrightnessContrastDialog(
+        #     utils.img_data_to_pil(self.imageData),
+        #     self.onNewBrightnessContrast,
+        #     parent=self,
+        # )
         brightness, contrast = self.brightnessContrast_values.get(self.filename, (None, None))
         if self._config["keep_prev_brightness"] and self.recentFiles:
             brightness, _ = self.brightnessContrast_values.get(self.recentFiles[0], (None, None))
@@ -1630,8 +1661,22 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.mayContinue():
             return
         path = osp.dirname(str(self.filename)) if self.filename else "."
+        path = "/home/lin/Desktop/input/series/"  # TODO: 测试，去掉
         formats = ["*.{}".format(fmt.data().decode()) for fmt in QtGui.QImageReader.supportedImageFormats()]
-        filters = self.tr("Image & Label files (%s)") % " ".join(formats + ["*%s" % LabelFile.suffix])
+        filters = ""
+        for k, v in readers["ext"].items():
+            print(k, " ".join([f"*.{ext}" for ext in v]))
+            filters += "%s (%s)" % (k, " ".join([f"*.{ext}" for ext in v]))
+            filters += ";;"
+        print(filters)
+        filters = self.tr(filters)
+        # "Images (*.png *.xpm *.jpg);;Text files (*.txt);;XML files (*.xml)"
+        """
+            提供三种选择：
+                1. *
+                2. 一个领域的文件：自然图像，包含自然图像所有拓展名。医学影像，包含所有医学的。。。
+        """
+
         filename = QtWidgets.QFileDialog.getOpenFileName(
             self,
             self.tr("%s - Choose Image or Label file") % __appname__,

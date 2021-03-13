@@ -101,8 +101,8 @@ class ComponentManager:
         """
 
         # Currently only support class or function type
-        if not (inspect.isclass(component) or inspect.isfunction(component)):
-            raise TypeError("Expect class/function type, but received {}".format(type(component)))
+        # if not (inspect.isclass(component) or inspect.isfunction(component)):
+        #     raise TypeError("Expect class/function type, but received {}".format(type(component)))
 
         # Obtain the internal name of the component
         if component_name is None:
@@ -129,22 +129,21 @@ class ComponentManager:
             components (function|class|list|tuple): Same with input components.
         """
 
-        # Check whether the type is a sequence
-        if isinstance(components, Sequence):
+        # Check whether the type is a list
+        if isinstance(components, list):
             if names is None:
                 names = [None for _ in len(components)]
+
             if len(components) != len(names):
                 raise KeyError(f"组件{len(components)}和名称{len(names)}数量不同")
+
             for component, name in zip(components, names):
                 self._add_single_component(component, name)
         else:
             component = components
-            if isinstance(names, Sequence):
+            if isinstance(names, list):
                 for name in names:
                     self._add_single_component(component, name)
             else:
                 self._add_single_component(component, names)
         return components
-
-
-readers = ComponentManager("readers")

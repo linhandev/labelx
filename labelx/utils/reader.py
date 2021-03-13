@@ -3,7 +3,6 @@ import os.path as osp
 import io
 
 import PIL
-import pydicom
 import nibabel as nib
 import SimpleITK as sitk
 import matplotlib.pyplot as plt
@@ -58,13 +57,7 @@ def nii(file_path):
     return data, dimension
 
 
-def image_reader(file_path):
-    itkImage = sitk.ReadImage(file_path)
-    data = sitk.GetArrayFromImage(itkImage)
-    return data, 2
-
-
-def load_image_file(filename):
+def image_reader(filename):
     try:
         image_pil = PIL.Image.open(filename)
     except IOError:
@@ -72,20 +65,11 @@ def load_image_file(filename):
         return
 
     image_pil = apply_exif_orientation(image_pil)
-
-    with io.BytesIO() as f:
-        ext = osp.splitext(filename)[1].lower()
-        if ext in [".jpg", ".jpeg"]:
-            format = "JPEG"
-        else:
-            format = "PNG"
-        image_pil.save(f, format=format)
-        f.seek(0)
-        return f.read(), 2
+    return image_pil, 2
 
 
 # TODO: 添加更多图片格式读取
-readers.add(load_image_file, ["png", "jpeg", "jpg"])
+readers.add(image_reader, ["png", "jpeg", "jpg"])
 
 # TODO: 添加视频读取系列
 @readers.add
@@ -93,8 +77,12 @@ def mkv(file_path):
     pass
 
 
-exts = {"Image": ["png", "jpg", "jpeg"], "Medical Image": ["dcm", "nii", "nii.gz"]}
+# 定义所有软件识别的拓展名和所属类别，全部要小写
+exts = {"Medical Image": ["dcm", "nii", "nii.gz"], "Image": ["png", "jpg", "jpeg"], "Video": ["mkv"]}
+all_exts = [n for names in exts.values() for n in names]
+exts["All"] = all_exts
 readers.add(exts, "ext")
+
 
 if __name__ == "__main__":
     """
@@ -109,12 +97,12 @@ if __name__ == "__main__":
         filters += "%s (%s)" % (k, " ".join([f"*.{ext}" for ext in v]))
         filters += ";;"
     print(filters)
-    # print(readers)
-    # file_path = "/home/lin/Desktop/med/series"
-    # ext = file_path.rstrip(".gz")
-    # ext = file_path.split(".")[-1]
-    # data, dimension = readers[ext](file_path)
-    data, dimension = readers["dcm"]("/home/lin/Desktop/input/series/")
+    print(readers)
+    file_path = "/home/lin/Desktop/input/cat.jpg"
+    ext = file_path.rstrip(".gz")
+    ext = file_path.split(".")[-1]
+    data, dimension = readers[ext](file_path)
+    # data, dimension = readers["dcm"]("/home/lin/Desktop/input/series/")
 
     if dimension == 3:
         for idx in range(data.shape[0]):

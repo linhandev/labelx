@@ -20,6 +20,7 @@ from labelx import QT5
 from . import utils
 from .utils import readers
 
+from labelx.data_manager import DataManager
 from labelx.config import get_config
 from labelx.label_file import LabelFile
 from labelx.label_file import LabelFileError
@@ -1382,93 +1383,29 @@ class MainWindow(QtWidgets.QMainWindow):
         for item in self.labelList:
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
-    def loadFile(self, filename=None, ext=None):
+    def loadFile(self, file_path=None, ext=None):
         # NOTE: 有些文件可能是不带拓展名的，让用户选作为什么读入，这里直接用那个reader
         # TODO: 根据拓展名选loader
         """Load the specified file, or the last opened file if None."""
 
         # 检测文件存在
-        if not QtCore.QFile.exists(filename):
+        if not QtCore.QFile.exists(file_path):
             self.errorMessage(
                 self.tr("Error opening file"),
-                self.tr("No such file: <b>%s</b>") % filename,
+                self.tr("No such file: <b>%s</b>") % file_path,
             )
             return False
 
-        parts = filename.split(".")
-        if ext is None:
-            ext = parts[-1] if parts[-1] != "gz" else parts[-2]
+        self.status(self.tr("Loading %s...") % osp.basename(str(file_path)))
 
-        # 修改右下角文件列表信息
-        if filename in self.imageList and (
-            self.fileListWidget.currentRow() != self.imageList.index(filename)
-        ):
-            self.fileListWidget.setCurrentRow(self.imageList.index(filename))
-            self.fileListWidget.repaint()
-            return
-
-        # 修改gui状态
-        self.resetState()
-        self.canvas.setEnabled(False)
-        if filename is None:
-            filename = self.settings.value("filename", "")
-        filename = str(filename)
-
-        self.status(self.tr("Loading %s...") % osp.basename(str(filename)))
-
-        def wwwc(data, wc, ww):
-            data = data.clip(int(wc - ww / 2), int(wc + ww / 2))
-            print(data.min(), data.max())
-            data -= int(wc - ww / 2)
-            print(data.min(), data.max())
-            data = data / ww * (2 ** 8)
-            print(data.min(), data.max())
-            data = data.astype("int8")
-            return data
-
-        # 尝试读取标签文件
-        # TODO: 3d的东西也是一片一个json文件
-        if ext in ["png", "jpeg", "jpg"]:
-            label_file = osp.splitext(filename)[0] + ".json"
-            if self.output_dir:
-                label_file_without_path = osp.basename(label_file)
-                label_file = osp.join(self.output_dir, label_file_without_path)
-            if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(label_file):
-                try:
-                    self.labelFile = LabelFile(label_file)
-                except LabelFileError as e:
-                    self.errorMessage(
-                        self.tr("Error opening file"),
-                        self.tr("<p><b>%s</b></p>" "<p>Make sure <i>%s</i> is a valid label file.")
-                        % (e, label_file),
-                    )
-                    self.status(self.tr("Error reading %s") % label_file)
-                    return False
-                self.imageData = self.labelFile.imageData
-                self.imagePath = osp.join(
-                    osp.dirname(label_file),
-                    self.labelFile.imagePath,
-                )
-                self.otherData = self.labelFile.otherData
-            else:
-                self.imageData, self.dimension = utils.readers[ext](filename)
-                # BUG: 这个if不知道是在干什么
-                if self.imageData is not None:
-                    self.imagePath = filename
-                self.labelFile = None
-
-            image = QtGui.QImage.fromData(self.imageData)
-        else:
-            self.raw, self.dimension = utils.readers[ext](filename)
-            self.imageData = self.raw
-            self.imageData = wwwc(self.imageData, 0, 1000)
-            s = self.imageData.shape
-            image = QtGui.QImage(self.imageData[0].tobytes(), s[1], s[2], QtGui.QImage.Format_Grayscale8)
-
-        # image = QtGui.QImage.fromData(self.imageData)
-
-        # 读取图片出错
-        if image.isNull():
+        # TODO: 挪进去
+        self.data = DataManager(file_path, self.output_dir, ext=ext)
+        self.image, self.labelFile = self.data()
+        try:
+            pass
+        except Exception as e:
+            print(e)
+            # 处理所有读取数据和标签过程中的错误
             formats = [
                 "*.{}".format(fmt.data().decode()) for fmt in QtGui.QImageReader.supportedImageFormats()
             ]
@@ -1476,16 +1413,31 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.tr("Error opening file"),
                 self.tr(
                     "<p>Make sure <i>{0}</i> is a valid image file.<br/>" "Supported image formats: {1}</p>"
-                ).format(filename, ",".join(formats)),
+                ).format(file_path, ",".join(formats)),
             )
-            self.status(self.tr("Error reading %s") % filename)
+            self.status(self.tr("Error reading %s") % file_path)
             return False
 
-        self.image = image
-        self.filename = filename
+        # 修改右下角文件列表信息
+        if file_path in self.imageList:
+            if self.fileListWidget.currentRow() != self.imageList.index(file_path):
+                self.fileListWidget.setCurrentRow(self.imageList.index(file_path))
+                self.fileListWidget.repaint()
+        else:
+            pass
+            # TODO: 添加一条记录
+
+        # 修改gui状态
+        self.resetState()
+        self.canvas.setEnabled(False)
+        if file_path is None:
+            file_path = self.settings.value("file_path", "")
+        file_path = str(file_path)
+
+        self.file_path = file_path
         if self._config["keep_prev"]:
             prev_shapes = self.canvas.shapes
-        self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
+        self.canvas.loadPixmap(QtGui.QPixmap.fromImage(self.image))
         flags = {k: False for k in self._config["flags"] or []}
         if self.labelFile:
             self.loadLabels(self.labelFile.shapes)
@@ -1498,17 +1450,17 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.setClean()
         self.canvas.setEnabled(True)
-        # set zoom values
+        # 设置放大倍数
         is_initial_load = not self.zoom_values
-        if self.filename in self.zoom_values:
-            self.zoomMode = self.zoom_values[self.filename][0]
-            self.setZoom(self.zoom_values[self.filename][1])
+        if self.file_path in self.zoom_values:
+            self.zoomMode = self.zoom_values[self.file_path][0]
+            self.setZoom(self.zoom_values[self.file_path][1])
         elif is_initial_load or not self._config["keep_prev_scale"]:
             self.adjustScale(initial=True)
         # set scroll values
         for orientation in self.scroll_values:
-            if self.filename in self.scroll_values[orientation]:
-                self.setScroll(orientation, self.scroll_values[orientation][self.filename])
+            if self.file_path in self.scroll_values[orientation]:
+                self.setScroll(orientation, self.scroll_values[orientation][self.file_path])
         # set brightness constrast values
         # TODO: 研究灰度图这块怎么处理
         # dialog = BrightnessContrastDialog(
@@ -1516,23 +1468,23 @@ class MainWindow(QtWidgets.QMainWindow):
         #     self.onNewBrightnessContrast,
         #     parent=self,
         # )
-        brightness, contrast = self.brightnessContrast_values.get(self.filename, (None, None))
-        if self._config["keep_prev_brightness"] and self.recentFiles:
-            brightness, _ = self.brightnessContrast_values.get(self.recentFiles[0], (None, None))
-        if self._config["keep_prev_contrast"] and self.recentFiles:
-            _, contrast = self.brightnessContrast_values.get(self.recentFiles[0], (None, None))
-        if brightness is not None:
-            dialog.slider_brightness.setValue(brightness)
-        if contrast is not None:
-            dialog.slider_contrast.setValue(contrast)
-        self.brightnessContrast_values[self.filename] = (brightness, contrast)
-        if brightness is not None or contrast is not None:
-            dialog.onNewValue(None)
+        # brightness, contrast = self.brightnessContrast_values.get(self.file_path, (None, None))
+        # if self._config["keep_prev_brightness"] and self.recentFiles:
+        #     brightness, _ = self.brightnessContrast_values.get(self.recentFiles[0], (None, None))
+        # if self._config["keep_prev_contrast"] and self.recentFiles:
+        #     _, contrast = self.brightnessContrast_values.get(self.recentFiles[0], (None, None))
+        # if brightness is not None:
+        #     dialog.slider_brightness.setValue(brightness)
+        # if contrast is not None:
+        #     dialog.slider_contrast.setValue(contrast)
+        # self.brightnessContrast_values[self.file_path] = (brightness, contrast)
+        # if brightness is not None or contrast is not None:
+        #     dialog.onNewValue(None)
         self.paintCanvas()
-        self.addRecentFile(self.filename)
+        self.addRecentFile(self.file_path)
         self.toggleActions(True)
         self.canvas.setFocus()
-        self.status(self.tr("Loaded %s") % osp.basename(str(filename)))
+        self.status(self.tr("Loaded %s") % osp.basename(str(file_path)))
         return True
 
     def resizeEvent(self, event):
@@ -1661,7 +1613,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.mayContinue():
             return
         path = osp.dirname(str(self.filename)) if self.filename else "."
-        path = "/home/lin/Desktop/input/series/"  # TODO: 测试，去掉
+        path = "/home/lin/Desktop/input/"  # TODO: 测试，去掉
         formats = ["*.{}".format(fmt.data().decode()) for fmt in QtGui.QImageReader.supportedImageFormats()]
         filters = ""
         for k, v in readers["ext"].items():

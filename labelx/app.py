@@ -201,6 +201,21 @@ class MainWindow(QtWidgets.QMainWindow):
         # Actions
         action = functools.partial(utils.newAction, self)
         shortcuts = self._config["shortcuts"]
+        turn_next = action(
+            self.tr("&Turn next"),
+            functools.partial(self.turn, 1),
+            shortcuts["turn_next"],
+            "turn next",
+            self.tr("Open image or label file"),
+        )
+        turn_prev = action(
+            self.tr("&Turn prev"),
+            functools.partial(self.turn, -1),
+            shortcuts["turn_prev"],
+            "turn prev",
+            self.tr("Open image or label file"),
+        )
+
         quit = action(
             self.tr("&Quit"),
             self.close,
@@ -580,6 +595,8 @@ class MainWindow(QtWidgets.QMainWindow):
             tool=(),
             # XXX: need to add some actions here to activate the shortcut
             editMenu=(
+                turn_next,
+                turn_prev,
                 edit,
                 copy,
                 delete,
@@ -1399,7 +1416,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # TODO: 挪进去
         self.data = DataManager(file_path, self.output_dir, ext=ext)
-        self.image, self.labelFile = self.data()
+        self.image, labelFile = self.data()
+
         try:
             pass
         except Exception as e:
@@ -1436,9 +1454,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.file_path = file_path
         if self._config["keep_prev"]:
             prev_shapes = self.canvas.shapes
+
         self.canvas.loadPixmap(QtGui.QPixmap.fromImage(self.image))
         flags = {k: False for k in self._config["flags"] or []}  # TODO: 3d序列flag只存在第一个
-        if self.labelFile:
+        self.labelFile = labelFile
+        if len(self.labelFile.shapes) != 0:
+            if isinstance(self.labelFile.shapes[0], labelx.shape.Shape):
+                self.canvas.shapes = self.labelFile.shapes
             self.loadLabels(self.labelFile.shapes)
             if self.labelFile.flags is not None:
                 flags.update(self.labelFile.flags)
@@ -1472,32 +1494,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status(self.tr("Loaded %s") % osp.basename(str(file_path)))
         return True
 
-    def turn(self, delta):
-        self.status(self.tr("Turning %s %d...") % (osp.basename(str(file_path))), delta)
-
-        working
-        # 修改右下角文件列表信息
-        if file_path in self.imageList:
-            if self.fileListWidget.currentRow() != self.imageList.index(file_path):
-                self.fileListWidget.setCurrentRow(self.imageList.index(file_path))
-                self.fileListWidget.repaint()
-        else:
-            pass
-            # TODO: 添加一条记录
+    def turn(self, delta=1):
+        self.status(self.tr("Turning %s %d...") % (osp.basename(self.file_path), delta))
 
         # 修改gui状态
-        self.resetState()
+        # self.resetState()
+        # TODO: 保存flag
+        print("##########", self.canvas.shapes)
+        self.image, self.labelFile = self.data.turn(self.canvas.shapes, delta)
         self.canvas.setEnabled(False)
-        if file_path is None:
-            file_path = self.settings.value("file_path", "")
-        file_path = str(file_path)
 
-        self.file_path = file_path
         if self._config["keep_prev"]:
             prev_shapes = self.canvas.shapes
         self.canvas.loadPixmap(QtGui.QPixmap.fromImage(self.image))
         flags = {k: False for k in self._config["flags"] or []}  # TODO: 3d序列flag只存在第一个
-        if self.labelFile:
+        if len(self.labelFile.shapes) != 0:
             self.loadLabels(self.labelFile.shapes)
             if self.labelFile.flags is not None:
                 flags.update(self.labelFile.flags)
@@ -1525,7 +1536,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addRecentFile(self.file_path)
         self.toggleActions(True)
         self.canvas.setFocus()
-        self.status(self.tr("Loaded %s") % osp.basename(str(file_path)))
+        self.status(self.tr("Loaded %s") % osp.basename(self.file_path))
         return True
 
     def resizeEvent(self, event):

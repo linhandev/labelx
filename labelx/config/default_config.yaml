@@ -66,6 +66,8 @@ canvas:
   double_click: close
 
 shortcuts:
+  turn_next: Ctrl+M
+  turn_prev: Ctrl+B
   close: Ctrl+W
   open: Ctrl+O
   open_dir: Ctrl+U

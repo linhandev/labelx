@@ -73,7 +73,7 @@ class DataManager:
                 )
 
     def load_label(self, output_dir):
-        self.labels = [None for _ in range(self.shape[0])]
+        self.labels = [LabelFile() for _ in range(self.shape[0])]
         if output_dir is None:
             return
 
@@ -91,6 +91,9 @@ class DataManager:
                     )
                     self.status(self.tr("Error reading %s") % label_file)
                     return False
+        else:
+            # TODO: 添加读取一系列json
+            pass
 
     def __getitem__(self, idx):
         if idx >= self.shape[0] or idx < 0:
@@ -100,14 +103,19 @@ class DataManager:
     def __call__(self):
         return self[self.idx]
 
-    def cache(self, label):
-        self.labels[self.idx] = label
+    def cache(self, shapes):
+        self.labels[self.idx].shapes = shapes
 
-    def turn(self, label, delta):
-        self.cache(label)
+    def turn(self, shapes, delta):
+        self.cache(shapes)
         self.idx += delta
+        print("----------")
+        print(delta)
+        print(self.idx)
+        print(self.shape)
         if self.idx < 0 or self.idx >= self.shape[0]:
-            self.idx -= delta  # 撤销翻页，翻不了了
+            self.idx -= delta  # 撤销翻页，翻不了
+        print(self.idx)
         return self()
 
     def save(self):

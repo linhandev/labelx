@@ -40,32 +40,10 @@ class LabelFile(object):
         self.shapes = []
         self.imagePath = None
         self.imageData = None
+        self.flags = None
         if filename is not None:
             self.load(filename)
         self.filename = filename
-
-    # @staticmethod
-    # def load_image_file(filename):
-    #     try:
-    #         image_pil = PIL.Image.open(filename)
-    #     except IOError:
-    #         logger.error("Failed opening image file: {}".format(filename))
-    #         return
-    #
-    #     # apply orientation to image according to exif
-    #     image_pil = utils.apply_exif_orientation(image_pil)
-    #
-    #     with io.BytesIO() as f:
-    #         ext = osp.splitext(filename)[1].lower()
-    #         if PY2 and QT4:
-    #             format = "PNG"
-    #         elif ext in [".jpg", ".jpeg"]:
-    #             format = "JPEG"
-    #         else:
-    #             format = "PNG"
-    #         image_pil.save(f, format=format)
-    #         f.seek(0)
-    #         return f.read()
 
     def load(self, filename):
         keys = [

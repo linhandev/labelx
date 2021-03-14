@@ -46,7 +46,6 @@ def dcm(file_path):
 # TODO: 如果旋转可以保存修正过的 affine
 
 
-@readers.add
 def nii(file_path):
     itkImage = sitk.ReadImage(file_path)
     data = sitk.GetArrayFromImage(itkImage)
@@ -55,6 +54,9 @@ def nii(file_path):
     else:
         dimension = 3
     return data, dimension
+
+
+readers.add(nii, ["nii", "nii.gz"])
 
 
 def image_reader(filename):

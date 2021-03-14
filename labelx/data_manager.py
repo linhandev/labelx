@@ -43,6 +43,7 @@ class DataManager:
             self.cube = wwwc(self.raw, 0, 1000)
             self.shape = self.raw.shape
         else:
+            # TODO: 添加亮度对比度
             self.cube = [self.raw]
             self.shape = [x for x in self.raw.size]
             self.shape.insert(0, 1)
@@ -101,6 +102,13 @@ class DataManager:
 
     def cache(self, label):
         self.labels[self.idx] = label
+
+    def turn(self, label, delta):
+        self.cache(label)
+        self.idx += delta
+        if self.idx < 0 or self.idx >= self.shape[0]:
+            self.idx -= delta  # 撤销翻页，翻不了了
+        return self()
 
     def save(self):
         pass

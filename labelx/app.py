@@ -1384,10 +1384,9 @@ class MainWindow(QtWidgets.QMainWindow):
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
     def loadFile(self, file_path=None, ext=None):
-        # NOTE: 有些文件可能是不带拓展名的，让用户选作为什么读入，这里直接用那个reader
+        # NOTE: 不带拓展名的文件让用户选作为什么读入，如果选了就不会检测拓展名，直接用选的
         # TODO: 根据拓展名选loader
         """Load the specified file, or the last opened file if None."""
-
         # 检测文件存在
         if not QtCore.QFile.exists(file_path):
             self.errorMessage(
@@ -1438,18 +1437,19 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._config["keep_prev"]:
             prev_shapes = self.canvas.shapes
         self.canvas.loadPixmap(QtGui.QPixmap.fromImage(self.image))
-        flags = {k: False for k in self._config["flags"] or []}
+        flags = {k: False for k in self._config["flags"] or []}  # TODO: 3d序列flag只存在第一个
         if self.labelFile:
             self.loadLabels(self.labelFile.shapes)
             if self.labelFile.flags is not None:
                 flags.update(self.labelFile.flags)
         self.loadFlags(flags)
-        if self._config["keep_prev"] and self.noShapes():
+        if self._config["keep_prev"] and self.noShapes():  # TODO: 保存前一个和load进来的标签叠加
             self.loadShapes(prev_shapes, replace=False)
             self.setDirty()
         else:
             self.setClean()
         self.canvas.setEnabled(True)
+
         # 设置放大倍数
         is_initial_load = not self.zoom_values
         if self.file_path in self.zoom_values:
@@ -1457,29 +1457,70 @@ class MainWindow(QtWidgets.QMainWindow):
             self.setZoom(self.zoom_values[self.file_path][1])
         elif is_initial_load or not self._config["keep_prev_scale"]:
             self.adjustScale(initial=True)
-        # set scroll values
+        # set scroll values # TODO: 这里整个不想用滚动，希望能通过鼠标拖动实现平滑的移动
         for orientation in self.scroll_values:
             if self.file_path in self.scroll_values[orientation]:
                 self.setScroll(orientation, self.scroll_values[orientation][self.file_path])
+
         # set brightness constrast values
         # TODO: 研究灰度图这块怎么处理
-        # dialog = BrightnessContrastDialog(
-        #     utils.img_data_to_pil(self.imageData),
-        #     self.onNewBrightnessContrast,
-        #     parent=self,
-        # )
-        # brightness, contrast = self.brightnessContrast_values.get(self.file_path, (None, None))
-        # if self._config["keep_prev_brightness"] and self.recentFiles:
-        #     brightness, _ = self.brightnessContrast_values.get(self.recentFiles[0], (None, None))
-        # if self._config["keep_prev_contrast"] and self.recentFiles:
-        #     _, contrast = self.brightnessContrast_values.get(self.recentFiles[0], (None, None))
-        # if brightness is not None:
-        #     dialog.slider_brightness.setValue(brightness)
-        # if contrast is not None:
-        #     dialog.slider_contrast.setValue(contrast)
-        # self.brightnessContrast_values[self.file_path] = (brightness, contrast)
-        # if brightness is not None or contrast is not None:
-        #     dialog.onNewValue(None)
+
+        self.paintCanvas()
+        self.addRecentFile(self.file_path)
+        self.toggleActions(True)
+        self.canvas.setFocus()
+        self.status(self.tr("Loaded %s") % osp.basename(str(file_path)))
+        return True
+
+    def turn(self, delta):
+        self.status(self.tr("Turning %s %d...") % (osp.basename(str(file_path))), delta)
+
+        working
+        # 修改右下角文件列表信息
+        if file_path in self.imageList:
+            if self.fileListWidget.currentRow() != self.imageList.index(file_path):
+                self.fileListWidget.setCurrentRow(self.imageList.index(file_path))
+                self.fileListWidget.repaint()
+        else:
+            pass
+            # TODO: 添加一条记录
+
+        # 修改gui状态
+        self.resetState()
+        self.canvas.setEnabled(False)
+        if file_path is None:
+            file_path = self.settings.value("file_path", "")
+        file_path = str(file_path)
+
+        self.file_path = file_path
+        if self._config["keep_prev"]:
+            prev_shapes = self.canvas.shapes
+        self.canvas.loadPixmap(QtGui.QPixmap.fromImage(self.image))
+        flags = {k: False for k in self._config["flags"] or []}  # TODO: 3d序列flag只存在第一个
+        if self.labelFile:
+            self.loadLabels(self.labelFile.shapes)
+            if self.labelFile.flags is not None:
+                flags.update(self.labelFile.flags)
+        self.loadFlags(flags)
+        if self._config["keep_prev"] and self.noShapes():  # TODO: 保存前一个和load进来的标签叠加
+            self.loadShapes(prev_shapes, replace=False)
+            self.setDirty()
+        else:
+            self.setClean()
+        self.canvas.setEnabled(True)
+
+        # 设置放大倍数
+        is_initial_load = not self.zoom_values
+        if self.file_path in self.zoom_values:
+            self.zoomMode = self.zoom_values[self.file_path][0]
+            self.setZoom(self.zoom_values[self.file_path][1])
+        elif is_initial_load or not self._config["keep_prev_scale"]:
+            self.adjustScale(initial=True)
+        # set scroll values # TODO: 这里整个不想用滚动，希望能通过鼠标拖动实现平滑的移动
+        for orientation in self.scroll_values:
+            if self.file_path in self.scroll_values[orientation]:
+                self.setScroll(orientation, self.scroll_values[orientation][self.file_path])
+
         self.paintCanvas()
         self.addRecentFile(self.file_path)
         self.toggleActions(True)

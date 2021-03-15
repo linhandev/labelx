@@ -14,13 +14,15 @@ from .utils.reader import readers
 from .label_file import LabelFile
 
 
-def wwwc(data, wc=0, ww=1000):
+def wwwc(ww, wc, data):
+    print(ww, wc)
     # TODO: 为什么先clip和后clip效果不一样
-    data -= int(wc - ww / 2)
-    data = data / ww * (2 ** 8)
-    data = data.clip(0, 255)
-    data = data.astype("uint8")
-    return data
+    res = data - int(wc - ww / 2)
+    res = res / ww * (2 ** 8)
+    res = res.clip(0, 255)
+    res = res.astype("uint8")
+
+    return res
 
 
 class DataManager:
@@ -41,7 +43,7 @@ class DataManager:
 
         # TODO: transform这设计一下，调用方法，支持添加
         if self.dimension == 3:
-            self.cube = wwwc(self.raw, 0, 1000)
+            self.cube = wwwc(1000, 0, self.raw)
             self.shape = self.raw.shape
         else:
             # TODO: 添加亮度对比度
@@ -121,3 +123,7 @@ class DataManager:
 
     def save(self):
         pass
+
+    def apply_adjust(self, adjust_func):
+        self.cube = adjust_func(self.raw)
+        self.gen_images()

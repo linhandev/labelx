@@ -797,7 +797,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.file_dock)
 
     def adjust_image(self):
-        adjust_image_dialog = AdjustImageDialog(self)
+        def apply_adjust(adjust_func):
+            self.data.apply_adjust(adjust_func)
+            image, _ = self.data()
+            print(image)
+            self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
+            self.paintCanvas()
+
+        adjust_image_dialog = AdjustImageDialog(apply_adjust, self)
         adjust_image_dialog.exec_()
 
     # User Dialogs #

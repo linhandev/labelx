@@ -15,9 +15,10 @@ from .label_file import LabelFile
 
 
 def wwwc(data, wc=0, ww=1000):
-    data = data.clip(int(wc - ww / 2), int(wc + ww / 2))
+    # TODO: 为什么先clip和后clip效果不一样
     data -= int(wc - ww / 2)
     data = data / ww * (2 ** 8)
+    data = data.clip(0, 255)
     data = data.astype("uint8")
     return data
 

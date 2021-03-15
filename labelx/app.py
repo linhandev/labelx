@@ -34,6 +34,7 @@ from labelx.widgets import LabelListWidgetItem
 from labelx.widgets import ToolBar
 from labelx.widgets import UniqueLabelQListWidget
 from labelx.widgets import ZoomWidget
+from labelx.widgets import AdjustImageDialog
 
 
 # FIXME
@@ -74,7 +75,6 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         self.output_file = output_file
         self.output_dir = output_dir
-
         # set default shape colors
         # TODO: gui添加设置这个的取色器
         Shape.line_color = QtGui.QColor(*self._config["shape"]["line_color"])
@@ -173,6 +173,13 @@ class MainWindow(QtWidgets.QMainWindow):
             shortcuts["turn_prev"],
             "turn prev",
             self.tr("Open image or label file"),
+        )
+        adjust = action(
+            self.tr("&Adjust"),
+            self.adjust_image,
+            shortcuts["adjust_image"],
+            "",
+            self.tr(""),
         )
 
         quit = action(
@@ -556,6 +563,7 @@ class MainWindow(QtWidgets.QMainWindow):
             editMenu=(
                 turn_next,
                 turn_prev,
+                adjust,
                 edit,
                 copy,
                 delete,
@@ -787,6 +795,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.shape_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.file_dock)
+
+    def adjust_image(self):
+        adjust_image_dialog = AdjustImageDialog(self)
+        adjust_image_dialog.exec_()
 
     # User Dialogs #
     def loadRecent(self, filename):

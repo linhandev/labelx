@@ -68,6 +68,7 @@ canvas:
 shortcuts:
   turn_next: Ctrl+M
   turn_prev: Ctrl+B
+  adjust_image: Ctrl+]
   close: Ctrl+W
   open: Ctrl+O
   open_dir: Ctrl+U

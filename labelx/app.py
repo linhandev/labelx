@@ -121,6 +121,7 @@ class MainWindow(QtWidgets.QMainWindow):
             Qt.Horizontal: {},
             Qt.Vertical: {},
         }  # key=filename, value=scroll_value
+        self.key_space_press = bool   #判断是否按下空格键
 
         if filename is not None and osp.isdir(filename):
             self.importDirImages(filename, load=False)
@@ -762,12 +763,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.zoomRequest.connect(self.zoomRequest)
 
         scrollArea = QtWidgets.QScrollArea()
+        #禁止显示滚动条
+        scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # scrollArea.installEventFilter(self)
         scrollArea.setWidget(self.canvas)
         scrollArea.setWidgetResizable(True)
         self.scrollBars = {
             Qt.Vertical: scrollArea.verticalScrollBar(),
             Qt.Horizontal: scrollArea.horizontalScrollBar(),
         }
+        # 滚动条添加事件过滤器，过滤鼠标滚动控制
+        self.scrollBars[Qt.Vertical].installEventFilter(self)
+        self.scrollBars[Qt.Horizontal].installEventFilter(self)
         # TODO: 修改处理scroll的方式 3D - 通过滚动切换片 2D - ?
         self.canvas.scrollRequest.connect(self.scrollRequest)
 
@@ -775,6 +783,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.shapeMoved.connect(self.setDirty)
         self.canvas.selectionChanged.connect(self.shapeSelectionChanged)
         self.canvas.drawingPolygon.connect(self.toggleDrawingSensitive)
+        #添加一个事件 ，判断是否按下了空格键
+        self.canvas.keySpacePress.connect(self.isKeySpace)
+        self.canvas.installEventFilter(self)
 
         self.setCentralWidget(scrollArea)
 
@@ -1949,3 +1960,42 @@ class MainWindow(QtWidgets.QMainWindow):
                     images.append(relativePath)
         images.sort(key=lambda x: x.lower())
         return images
+
+
+    def eventFilter(self, source, event):
+        """
+        事件过滤
+        :param source:
+        :param event:
+        :return:
+        """
+        print("enventfilter")
+        if source == self.scrollBars[Qt.Vertical] or source == self.scrollBars[Qt.Horizontal]:
+            if event.type() == QtCore.QEvent.Wheel:#过滤滚动控制滑动条的事件
+                print("off")
+                return True
+        if source == self.canvas:
+            if self.key_space_press :
+                #这个移动是根据鼠标的移动获取坐标点，设置滑动条的位置值
+                if event.type() == QtCore.QEvent.MouseMove:
+                    self.setCursor(Qt.SizeAllCursor)
+                    if self.last_move_v == 0 or self.last_move_h == 0 :
+                        self.last_move_v = event.pos().y()
+                        self.last_move_h = event.pos().x()
+
+                    distance_v = self.last_move_v - event.pos().y()
+                    distance_h = self.last_move_h - event.pos().x()
+                    self.scrollBars[Qt.Vertical].setValue(self.scrollBars[Qt.Vertical].value() + distance_v)
+                    self.scrollBars[Qt.Horizontal].setValue(self.scrollBars[Qt.Horizontal].value() + distance_h)
+                    self.last_move_v = event.pos().y()
+                    self.last_move_h = event.pos().x()
+                else:
+                    self.last_move_v = 0
+                    self.last_move_h = 0
+                    self.setCursor(Qt.ArrowCursor)
+                return QtWidgets.QWidget.eventFilter(self, source, event)
+        return QtWidgets.QWidget.eventFilter(self, source, event)
+
+    def isKeySpace(self,value):
+        #判断是否按下空格
+        self.key_space_press = value

@@ -28,6 +28,7 @@ class Canvas(QtWidgets.QWidget):
     drawingPolygon = QtCore.Signal(bool)
     edgeSelected = QtCore.Signal(bool, object)
     vertexSelected = QtCore.Signal(bool)
+    keySpacePress = QtCore.Signal(bool)  #触发按下了键盘空格键
 
     CREATE, EDIT = 0, 1
 
@@ -697,10 +698,11 @@ class Canvas(QtWidgets.QWidget):
                 # with Ctrl/Command key
                 # zoom
                 self.zoomRequest.emit(delta.y(), ev.pos())
-            else:
-                # scroll
-                self.scrollRequest.emit(delta.x(), QtCore.Qt.Horizontal)
-                self.scrollRequest.emit(delta.y(), QtCore.Qt.Vertical)
+            #已经用鼠标控制图的移动，不再用滚动条控制
+            # else:
+            #     # scroll
+            #     self.scrollRequest.emit(delta.x(), QtCore.Qt.Horizontal)
+            #     self.scrollRequest.emit(delta.y(), QtCore.Qt.Vertical)
         else:
             if ev.orientation() == QtCore.Qt.Vertical:
                 mods = ev.modifiers()
@@ -726,6 +728,13 @@ class Canvas(QtWidgets.QWidget):
             self.update()
         elif key == QtCore.Qt.Key_Return and self.canCloseShape():
             self.finalise()
+        elif key == QtCore.Qt.Key_Space:
+            self.keySpacePress.emit(True)
+
+    def keyReleaseEvent(self, ev):
+        key = ev.key()
+        if key == QtCore.Qt.Key_Space:
+            self.keySpacePress.emit(False)
 
     def setLastLabel(self, text, flags):
         assert text

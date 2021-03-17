@@ -31,23 +31,24 @@ def wwwc(ww, wc, data):
 
 
 class DataManager:
-    def __init__(self, image_path, output_dir=None, ext=None):
-        self.idx = 0
-        self.image_path = image_path
-        image_name = osp.basename(self.image_path)
-        self.ext = None
-        img_name_low = image_name.lower()
-        for ext in readers["ext"]["All"]:
-            if img_name_low.endswith(ext):
-                self.ext = ext
-
+    def __init__(self, image_file_path, output_dir=None, ext=None):
+        self.idx = 0  # 当前在第几片
+        self.image_file_path = image_file_path  # 被标注文件路径，dcm也是序列中的一个文件
+        self.labels = None  # 保存所有的labelfile，2d也是一个len是1的list
+        file_name = osp.basename(self.image_file_path)
+        self.ext = ext  # 创建的时候可以指定文件类型，使用的时候都以self.ext为准
+        if self.ext is None:  # 没指定就推理
+            file_name = file_name.lower()
+            for ext in readers["ext"]["All"]:
+                if file_name.endswith(ext):
+                    self.ext = ext
         # TODO: 扔这个异常之后main要接，给弹框
         if self.ext is None:
-            raise NotImplementedError(
-                f"Reader for {self.image_path} is not implemented"
-            )
+            raise NotImplementedError(f"Reader for {self.image_file_path} is not implemented")
 
-        self.raw, self.dimension, self.image_name = readers[self.ext](self.image_path)
+        print("stripext", self.stripext(file_name))  # TODO: 去掉
+        self.raw, self.dimension, self.image_name = readers[self.ext](self.image_file_path)
+        print("stripext", self.stripext(self.image_name))  # TODO: 去掉
 
         # TODO: transform这设计一下，调用方法，支持添加
         if self.dimension == 3:
@@ -60,13 +61,17 @@ class DataManager:
             self.shape.insert(0, 1)
 
         self.gen_images()
-        if output_dir == None:
-            output_dir = osp.dirname(self.image_path)
-            if self.dimension == 3:
-                output_dir = osp.join(output_dir, utils.stripext(self.image_name))
-
-        print("init", output_dir)
+        # if output_dir == None:
+        #     output_dir = osp.dirname(self.image_file_path)
+        #     if self.dimension == 3:
+        #         output_dir = osp.join(output_dir, self.stripext(self.image_name))
+        print("Loading labels in __init__ from ", output_dir)
         self.load_label(output_dir)
+
+    def stripext(self, string):
+        if string.endswith(self.ext):
+            return string[: -len(self.ext) - 1]
+        return string
 
     def gen_images(self):
         self.images = []
@@ -92,45 +97,28 @@ class DataManager:
                 )
 
     def load_label(self, output_dir):
-        # TODO: outputdir应该是一个文件夹？这里考虑改成根据文件夹和self里的文件名字推断json路径
-        print("output_dir", output_dir)
-        print("shape", self.shape)
         self.labels = [LabelFile() for _ in range(self.shape[0])]
         if output_dir is None or not osp.exists(output_dir):
             return
         if self.dimension == 2:  # 那么标签是一个文件
-            labelf_name = utils.stripext(self.image_name) + LabelFile.suffix
-            self.labelf_path = osp.join(output_dir, labelf_name)
-            if osp.exists(self.labelf_path) and LabelFile.is_label_file(
-                self.labelf_path
-            ):
-                try:
-                    self.labels[0] = LabelFile(self.labelf_path)
-                except LabelFileError as e:
-                    self.errorMessage(
-                        self.tr("Error opening file"),
-                        self.tr(
-                            "<p><b>%s</b></p>"
-                            "<p>Make sure <i>%s</i> is a valid label file."
-                        )
-                        % (e, label_file),
-                    )
-                    self.status(self.tr("Error reading %s") % label_file)
-                    return False
+            labelf_name = self.stripext(self.image_name) + LabelFile.suffix
+            labelf_path = osp.join(output_dir, labelf_name)
+            print("labelf_path", labelf_path)
+            if osp.exists(labelf_path) and LabelFile.is_label_file(labelf_path):
+                # TODO: 主调处理 LabelFileError
+                self.labels[0] = LabelFile(labelf_path)
         else:
-            # TODO: 添加读取一系列json
-            label_file_names = os.listdir(output_dir)
-            label_file_names = [
-                n for n in label_file_names if n.endswith(LabelFile.suffix)
-            ]
-            print("labelfiles", label_file_names)
-            for idx, name in enumerate(label_file_names):
+            output_dir = osp.join(output_dir, self.stripext(self.image_name))
+            labelf_names = [n for n in os.listdir(output_dir) if n.endswith(LabelFile.suffix)]
+            print("Found label files", labelf_names)
+            labelf_names.sort()
+            for idx, name in enumerate(labelf_names):
                 # TODO: 这里初步根据文件名确定下标，后期改成3djson里写下标
-                label_file = LabelFile(osp.join(output_dir, name))
-                self.labels[idx] = label_file
-        for labelfile in self.labels:
+                self.labels[idx] = LabelFile(osp.join(output_dir, name))
+
+        for idx in range(len(self.labels)):
             s = []
-            for shape in labelfile.shapes:
+            for shape in self.labels[idx].shapes:
                 label = shape["label"]
                 points = shape["points"]
                 shape_type = shape["shape_type"]
@@ -138,8 +126,8 @@ class DataManager:
                 group_id = shape["group_id"]
                 other_data = shape["other_data"]
 
+                # skip point-empty shape
                 if not points:
-                    # skip point-empty shape
                     continue
 
                 shape = Shape(
@@ -161,6 +149,7 @@ class DataManager:
                 shape.flags.update(flags)
                 shape.other_data = other_data
                 s.append(shape)
+            self.labels[idx].shapes = s
 
     def __getitem__(self, idx):
         if idx >= self.shape[0] or idx < 0:
@@ -176,13 +165,12 @@ class DataManager:
     def turn(self, shapes, delta):
         self.cache(shapes)
         self.idx += delta
-        print("----------")
-        print(delta)
-        print(self.idx)
-        print(self.shape)
+        print("-------")
+        print(self.idx, delta)
         if self.idx < 0 or self.idx >= self.shape[0]:
+            print("in")
             self.idx -= delta  # 撤销翻页，翻不了
-        print(self.idx)
+            return None, None
         return self()
 
     def apply_adjust(self, adjust_func):
@@ -194,7 +182,6 @@ class DataManager:
             self.save_label(filename, imagePath, idx)
 
     def save_label(self, filename, imagePath, idx):
-        # TODO: 读入之后labelfile.shapes不是shape，是一个dict。对3d序列没翻到的片也需要做转换
         lf = LabelFile()
 
         if osp.isdir(filename):

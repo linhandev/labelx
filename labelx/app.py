@@ -829,7 +829,7 @@ class MainWindow(QtWidgets.QMainWindow):
         image, labelFile = self.data.turn(shapes, delta)
         if image is None:
             return
-        self.resetState()
+        self.resetState(turn=True)
         self.image, self.labelFile = image, labelFile
         self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
 
@@ -995,7 +995,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # TODO: 修改所有self.image.isNull，用canvas里有没有图片判断当前是不是有图片
         self.canvas.setEnabled(False)
         self.data = data
-        watch(self.data)
+        # watch(self.data)
         self.image, labelfile = self.data()
         self.canvas.loadPixmap(QtGui.QPixmap.fromImage(self.image))
         self.image_file_path = file_path
@@ -1075,16 +1075,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def saveFile(self, _value=False):
         assert not self.image.isNull(), "cannot save empty image"
+        print("aaaaaaaaaaaa", self.labelFile.filename, self.output_file)
         if self.labelFile.filename:
             # 已经有文件,直接保存
             self._saveFile(self.labelFile.filename)
         elif self.output_file:
-            # 如果2d，直接存到output_file；如果3d，存到output_file这个文件夹
+            # TODO: 必须是2d，如果3d就弹框报错，use save as instead
             self._saveFile(self.output_file)
             self.close()
         else:
             # 原来没有文件，命令行没给存到那，弹框问用户
-            self._saveFile(self.saveFileDialog())
+            output_path = self.saveFileDialog()
+            if output_path is None:
+                return
+            # TODO: 未成功保存，考虑是否提示
+            self._saveFile(output_path)
 
     def saveFileAs(self, _value=False):
         assert not self.image.isNull(), "cannot save empty image"
@@ -1092,7 +1097,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _saveFile(self, filename):
         # TODO: 处理savelabel扔的异常
-        if filename and self.data.save_all_labels(filename, self.image_file_path):
+        if filename and self.data.save_all_labels(filename):
             self.addRecentFile(filename)
             self.setClean()
 
@@ -1254,18 +1259,19 @@ class MainWindow(QtWidgets.QMainWindow):
     def status(self, message, delay=5000):
         self.statusBar().showMessage(message, delay)
 
-    def resetState(self):
+    def resetState(self, turn=False):
         """重置gui状态.
         在翻页或切换被标注数据的时候调用
         """
 
         self.image = None
         self.labelList.clear()
-        self.image_file_path = None
         self.imageData = None
         self.labelFile = None
         self.otherData = None
-        self.canvas.resetState(turn=False)
+        if not turn:
+            self.image_file_path = None
+        self.canvas.resetState(turn=turn)
 
     def currentItem(self):
         items = self.labelList.selectedItems()

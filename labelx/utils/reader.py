@@ -38,7 +38,8 @@ def dcm(file_path):
     data = sitk.GetArrayFromImage(itkImage)
 
     # TODO: 每个series需要有一个名字,作为保存的时候文件夹的名字,现在直接用series所在文件夹的名字,研究能不能换成series名字,注意不能重复
-    return data, 3, osp.basename(file_path)
+    folder_name = osp.basename(osp.dirname(file_path))
+    return data, 3, folder_name
 
 
 # TODO: 在软件中添加旋转

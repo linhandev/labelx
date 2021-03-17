@@ -177,19 +177,34 @@ class DataManager:
         self.cube = adjust_func(self.raw)
         self.gen_images()
 
-    def save_all_labels(self, filename, imagePath):
-        for idx in range(len(self.labels)):
-            self.save_label(filename, imagePath, idx)
+    def save_all_labels(self, output_path):
+        """保存所有层的标签.
 
-    def save_label(self, filename, imagePath, idx):
+        Parameters
+        ----------
+        output_path : str/None
+            None： 保存到原来的路径，覆盖原来的labelfile
+            3D：保存到这个文件夹
+            2D：保存到这个文件
+        """
+
+        for idx in range(len(self.labels)):
+            self.save_label(idx, output_path)
+
+    def save_label(self, idx, output_path):
         lf = LabelFile()
 
-        if osp.isdir(filename):
-            filename = osp.join(filename, str(idx) + LabelFile.suffix)
-        self.filename = filename
+        # None的话路径不变，覆写
+        if output_path is None:
+            output_path = self.labels[idx].filename
+        else:
+            if self.dimension == 3:
+                output_path = osp.join(output_path, self.stripext(self.image_name))
+                maxlen = len(str(self.shape[0])) + 1
+                output_path = osp.join(output_path, str(idx).zfill(maxlen) + LabelFile.suffix)
 
         def format_shape(s):
-            # TODO: 研究这otherdata是什么，怎么存，为什么labelfile里没有
+            # TODO: 研究这otherdata是什么，怎么存
             data = s.other_data.copy()
             data = dict(
                 label=s.label,
@@ -200,7 +215,7 @@ class DataManager:
             )
             return data
 
-        print("writing to", filename, len(self.labels[idx].shapes))
+        print("writing to", output_path, len(self.labels[idx].shapes))
         shapes = [format_shape(s) for s in self.labels[idx].shapes]
 
         # TODO: 保存flag
@@ -210,15 +225,15 @@ class DataManager:
         #     key = item.text()
         #     flag = item.checkState() == Qt.Checked
         #     flags[key] = flag
-        imagePath = osp.relpath(imagePath, osp.dirname(filename))
+        imagePath = osp.relpath(self.image_file_path, osp.dirname(output_path))
 
         # TODO: 用manager里的imageData替这个
         # imageData = self.imageData if self._config["store_data"] else None
         imageData = None
-        if osp.dirname(filename) and not osp.exists(osp.dirname(filename)):
-            os.makedirs(osp.dirname(filename))
+        if osp.dirname(output_path) and not osp.exists(osp.dirname(output_path)):
+            os.makedirs(osp.dirname(output_path))
         lf.save(
-            filename=filename,
+            filename=output_path,
             shapes=shapes,
             imagePath=imagePath,
             imageData=imageData,

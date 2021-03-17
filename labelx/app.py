@@ -61,7 +61,6 @@ class MainWindow(QtWidgets.QMainWindow):
         output_file=None,
         output_dir=None,
     ):
-
         # see labelx/config/default_config.yaml for valid configuration
         if config is None:
             config = get_config()
@@ -79,10 +78,18 @@ class MainWindow(QtWidgets.QMainWindow):
         # TODO: gui添加设置这个的取色器
         Shape.line_color = QtGui.QColor(*self._config["shape"]["line_color"])
         Shape.fill_color = QtGui.QColor(*self._config["shape"]["fill_color"])
-        Shape.select_line_color = QtGui.QColor(*self._config["shape"]["select_line_color"])
-        Shape.select_fill_color = QtGui.QColor(*self._config["shape"]["select_fill_color"])
-        Shape.vertex_fill_color = QtGui.QColor(*self._config["shape"]["vertex_fill_color"])
-        Shape.hvertex_fill_color = QtGui.QColor(*self._config["shape"]["hvertex_fill_color"])
+        Shape.select_line_color = QtGui.QColor(
+            *self._config["shape"]["select_line_color"]
+        )
+        Shape.select_fill_color = QtGui.QColor(
+            *self._config["shape"]["select_fill_color"]
+        )
+        Shape.vertex_fill_color = QtGui.QColor(
+            *self._config["shape"]["vertex_fill_color"]
+        )
+        Shape.hvertex_fill_color = QtGui.QColor(
+            *self._config["shape"]["hvertex_fill_color"]
+        )
 
         super(MainWindow, self).__init__()
         self.setWindowTitle(__appname__)
@@ -106,8 +113,8 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.init_ui()
         self.init_actions()
-        # Application state.
 
+        # Application state.
         self.image = QtGui.QImage()
         self.imagePath = None
         self.recentFiles = []
@@ -121,7 +128,7 @@ class MainWindow(QtWidgets.QMainWindow):
             Qt.Horizontal: {},
             Qt.Vertical: {},
         }  # key=filename, value=scroll_value
-        self.key_space_press = bool   #判断是否按下空格键
+        self.key_space_press = bool  # 判断是否按下空格键
 
         if filename is not None and osp.isdir(filename):
             self.importDirImages(filename, load=False)
@@ -421,8 +428,13 @@ class MainWindow(QtWidgets.QMainWindow):
         zoom = QtWidgets.QWidgetAction(self)
         zoom.setDefaultWidget(self.zoomWidget)
         self.zoomWidget.setWhatsThis(
-            self.tr("Zoom in or out of the image. Also accessible with " "{} and {} from the canvas.").format(
-                utils.fmtShortcut("{},{}".format(shortcuts["zoom_in"], shortcuts["zoom_out"])),
+            self.tr(
+                "Zoom in or out of the image. Also accessible with "
+                "{} and {} from the canvas."
+            ).format(
+                utils.fmtShortcut(
+                    "{},{}".format(shortcuts["zoom_in"], shortcuts["zoom_out"])
+                ),
                 utils.fmtShortcut(self.tr("Ctrl+Wheel")),
             )
         )
@@ -723,7 +735,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.uniqLabelList = UniqueLabelQListWidget()
         self.uniqLabelList.setToolTip(
-            self.tr("Select label to start annotating for it. " "Press 'Esc' to deselect.")
+            self.tr(
+                "Select label to start annotating for it. " "Press 'Esc' to deselect."
+            )
         )
         if self._config["labels"]:
             for label in self._config["labels"]:
@@ -763,7 +777,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.zoomRequest.connect(self.zoomRequest)
 
         scrollArea = QtWidgets.QScrollArea()
-        #禁止显示滚动条
+        # 禁止显示滚动条
         scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         # scrollArea.installEventFilter(self)
@@ -783,7 +797,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.shapeMoved.connect(self.setDirty)
         self.canvas.selectionChanged.connect(self.shapeSelectionChanged)
         self.canvas.drawingPolygon.connect(self.toggleDrawingSensitive)
-        #添加一个事件 ，判断是否按下了空格键
+        # 添加一个事件 ，判断是否按下了空格键
         self.canvas.keySpacePress.connect(self.isKeySpace)
         self.canvas.installEventFilter(self)
 
@@ -819,7 +833,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def turn(self, delta=1):
         """3d序列中进行翻页"""
-        self.status(self.tr("Turning %s slice %d...") % (osp.basename(self.file_path), delta))
+        self.status(
+            self.tr("Turning %s slice %d...") % (osp.basename(self.file_path), delta)
+        )
         zoom = self.zoomWidget.value()
         # 重置gui状态
         self.resetState()
@@ -855,7 +871,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # set scroll values # TODO: 这里整个不想用滚动，希望能通过鼠标拖动实现平滑的移动
         for orientation in self.scroll_values:
             if self.file_path in self.scroll_values[orientation]:
-                self.setScroll(orientation, self.scroll_values[orientation][self.file_path])
+                self.setScroll(
+                    orientation, self.scroll_values[orientation][self.file_path]
+                )
 
         self.paintCanvas()
         self.addRecentFile(self.file_path)
@@ -952,7 +970,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status(self.tr("Loading %s...") % osp.basename(str(file_path)))
 
         # TODO: 挪进去
-        print("loading file", file_path)
+        print("loading file", file_path, "outputdir is ", self.output_dir)
         self.data = DataManager(file_path, self.output_dir, ext=ext)
         self.image, labelFile = self.data()
         self.imagePath = file_path
@@ -962,12 +980,14 @@ class MainWindow(QtWidgets.QMainWindow):
             print(e)
             # 处理所有读取数据和标签过程中的错误
             formats = [
-                "*.{}".format(fmt.data().decode()) for fmt in QtGui.QImageReader.supportedImageFormats()
+                "*.{}".format(fmt.data().decode())
+                for fmt in QtGui.QImageReader.supportedImageFormats()
             ]
             self.errorMessage(
                 self.tr("Error opening file"),
                 self.tr(
-                    "<p>Make sure <i>{0}</i> is a valid image file.<br/>" "Supported image formats: {1}</p>"
+                    "<p>Make sure <i>{0}</i> is a valid image file.<br/>"
+                    "Supported image formats: {1}</p>"
                 ).format(file_path, ",".join(formats)),
             )
             self.status(self.tr("Error reading %s") % file_path)
@@ -1021,7 +1041,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # set scroll values # TODO: 这里整个不想用滚动，希望能通过鼠标拖动实现平滑的移动
         for orientation in self.scroll_values:
             if self.file_path in self.scroll_values[orientation]:
-                self.setScroll(orientation, self.scroll_values[orientation][self.file_path])
+                self.setScroll(
+                    orientation, self.scroll_values[orientation][self.file_path]
+                )
 
         # set brightness constrast values
         # TODO: 研究灰度图这块怎么处理
@@ -1045,7 +1067,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self,
             self.tr("%s - Save/Load Annotations in Directory") % __appname__,
             default_output_dir,
-            QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks,
+            QtWidgets.QFileDialog.ShowDirsOnly
+            | QtWidgets.QFileDialog.DontResolveSymlinks,
         )
         output_dir = str(output_dir)
 
@@ -1117,11 +1140,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         else:
             caption = self.tr("%s - Choose Output Dir") % __appname__
-            filename = QtWidgets.QFileDialog.getExistingDirectory(self, caption, output_dir)
-
-        print("chose to save at", filename)
+            filename = QtWidgets.QFileDialog.getExistingDirectory(
+                self, caption, output_dir
+            )
         if isinstance(filename, tuple):
             filename, _ = filename
+        print("chose to save at", filename)
         return filename
 
     def closeFile(self, _value=False):
@@ -1144,7 +1168,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def deleteFile(self):
         mb = QtWidgets.QMessageBox
-        msg = self.tr("You are about to permanently delete this label file, " "proceed anyway?")
+        msg = self.tr(
+            "You are about to permanently delete this label file, " "proceed anyway?"
+        )
         answer = mb.warning(self, self.tr("Attention"), msg, mb.Yes | mb.No)
         if answer != mb.Yes:
             return
@@ -1176,7 +1202,6 @@ class MainWindow(QtWidgets.QMainWindow):
         return toolbar
 
     # Support Functions
-
     def noShapes(self):
         return not len(self.labelList)
 
@@ -1241,7 +1266,9 @@ class MainWindow(QtWidgets.QMainWindow):
             action.setEnabled(value)
 
     def canvasShapeEdgeSelected(self, selected, shape):
-        self.actions.addPointToEdge.setEnabled(selected and shape and shape.canAddPoint())
+        self.actions.addPointToEdge.setEnabled(
+            selected and shape and shape.canAddPoint()
+        )
 
     def queueEvent(self, function):
         QtCore.QTimer.singleShot(0, function)
@@ -1365,7 +1392,9 @@ class MainWindow(QtWidgets.QMainWindow):
         files = [f for f in self.recentFiles if f != current and exists(f)]
         for i, f in enumerate(files):
             icon = utils.newIcon("labels")
-            action = QtWidgets.QAction(icon, "&%d %s" % (i + 1, QtCore.QFileInfo(f).fileName()), self)
+            action = QtWidgets.QAction(
+                icon, "&%d %s" % (i + 1, QtCore.QFileInfo(f).fileName()), self
+            )
             action.triggered.connect(functools.partial(self.loadRecent, f))
             menu.addAction(action)
 
@@ -1484,7 +1513,9 @@ class MainWindow(QtWidgets.QMainWindow):
         rgb = self._get_rgb_by_label(shape.label)
 
         r, g, b = rgb
-        label_list_item.setText('{} <font color="#{:02x}{:02x}{:02x}">●</font>'.format(text, r, g, b))
+        label_list_item.setText(
+            '{} <font color="#{:02x}{:02x}{:02x}">●</font>'.format(text, r, g, b)
+        )
         shape.line_color = QtGui.QColor(r, g, b)
         shape.vertex_fill_color = QtGui.QColor(r, g, b)
         shape.hvertex_fill_color = QtGui.QColor(255, 255, 255)
@@ -1704,7 +1735,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.onNewBrightnessContrast,
             parent=self,
         )
-        brightness, contrast = self.brightnessContrast_values.get(self.filename, (None, None))
+        brightness, contrast = self.brightnessContrast_values.get(
+            self.filename, (None, None)
+        )
         if brightness is not None:
             dialog.slider_brightness.setValue(brightness)
         if contrast is not None:
@@ -1720,7 +1753,11 @@ class MainWindow(QtWidgets.QMainWindow):
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
     def resizeEvent(self, event):
-        if self.canvas and not self.image.isNull() and self.zoomMode != self.MANUAL_ZOOM:
+        if (
+            self.canvas
+            and not self.image.isNull()
+            and self.zoomMode != self.MANUAL_ZOOM
+        ):
             self.adjustScale()
         super(MainWindow, self).resizeEvent(event)
 
@@ -1770,7 +1807,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def dragEnterEvent(self, event):
         extensions = [
-            ".%s" % fmt.data().decode().lower() for fmt in QtGui.QImageReader.supportedImageFormats()
+            ".%s" % fmt.data().decode().lower()
+            for fmt in QtGui.QImageReader.supportedImageFormats()
         ]
         if event.mimeData().hasUrls():
             items = [i.toLocalFile() for i in event.mimeData().urls()]
@@ -1824,7 +1862,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return False
 
     def errorMessage(self, title, message):
-        return QtWidgets.QMessageBox.critical(self, title, "<p><b>%s</b></p>%s" % (title, message))
+        return QtWidgets.QMessageBox.critical(
+            self, title, "<p><b>%s</b></p>%s" % (title, message)
+        )
 
     def currentPath(self):
         return osp.dirname(str(self.filename)) if self.filename else "."
@@ -1844,10 +1884,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def deleteSelectedShape(self):
         yes, no = QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
-        msg = self.tr("You are about to permanently delete {} polygons, " "proceed anyway?").format(
-            len(self.canvas.selectedShapes)
-        )
-        if yes == QtWidgets.QMessageBox.warning(self, self.tr("Attention"), msg, yes | no, yes):
+        msg = self.tr(
+            "You are about to permanently delete {} polygons, " "proceed anyway?"
+        ).format(len(self.canvas.selectedShapes))
+        if yes == QtWidgets.QMessageBox.warning(
+            self, self.tr("Attention"), msg, yes | no, yes
+        ):
             self.remLabels(self.canvas.deleteSelected())
             self.setDirty()
             if self.noShapes():
@@ -1880,7 +1922,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self,
                 self.tr("%s - Open Directory") % __appname__,
                 defaultOpenDirPath,
-                QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks,
+                QtWidgets.QFileDialog.ShowDirsOnly
+                | QtWidgets.QFileDialog.DontResolveSymlinks,
             )
         )
         self.importDirImages(targetDirPath)
@@ -1896,7 +1939,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def importDroppedImageFiles(self, imageFiles):
         extensions = [
-            ".%s" % fmt.data().decode().lower() for fmt in QtGui.QImageReader.supportedImageFormats()
+            ".%s" % fmt.data().decode().lower()
+            for fmt in QtGui.QImageReader.supportedImageFormats()
         ]
 
         self.filename = None
@@ -1949,7 +1993,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def scanAllImages(self, folderPath):
         extensions = [
-            ".%s" % fmt.data().decode().lower() for fmt in QtGui.QImageReader.supportedImageFormats()
+            ".%s" % fmt.data().decode().lower()
+            for fmt in QtGui.QImageReader.supportedImageFormats()
         ]
 
         images = []
@@ -1961,7 +2006,6 @@ class MainWindow(QtWidgets.QMainWindow):
         images.sort(key=lambda x: x.lower())
         return images
 
-
     def eventFilter(self, source, event):
         """
         事件过滤
@@ -1969,24 +2013,30 @@ class MainWindow(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        print("enventfilter")
-        if source == self.scrollBars[Qt.Vertical] or source == self.scrollBars[Qt.Horizontal]:
-            if event.type() == QtCore.QEvent.Wheel:#过滤滚动控制滑动条的事件
+        if (
+            source == self.scrollBars[Qt.Vertical]
+            or source == self.scrollBars[Qt.Horizontal]
+        ):
+            if event.type() == QtCore.QEvent.Wheel:  # 过滤滚动控制滑动条的事件
                 print("off")
                 return True
         if source == self.canvas:
-            if self.key_space_press :
-                #这个移动是根据鼠标的移动获取坐标点，设置滑动条的位置值
+            if self.key_space_press:
+                # 这个移动是根据鼠标的移动获取坐标点，设置滑动条的位置值
                 if event.type() == QtCore.QEvent.MouseMove:
                     self.setCursor(Qt.SizeAllCursor)
-                    if self.last_move_v == 0 or self.last_move_h == 0 :
+                    if self.last_move_v == 0 or self.last_move_h == 0:
                         self.last_move_v = event.pos().y()
                         self.last_move_h = event.pos().x()
 
                     distance_v = self.last_move_v - event.pos().y()
                     distance_h = self.last_move_h - event.pos().x()
-                    self.scrollBars[Qt.Vertical].setValue(self.scrollBars[Qt.Vertical].value() + distance_v)
-                    self.scrollBars[Qt.Horizontal].setValue(self.scrollBars[Qt.Horizontal].value() + distance_h)
+                    self.scrollBars[Qt.Vertical].setValue(
+                        self.scrollBars[Qt.Vertical].value() + distance_v
+                    )
+                    self.scrollBars[Qt.Horizontal].setValue(
+                        self.scrollBars[Qt.Horizontal].value() + distance_h
+                    )
                     self.last_move_v = event.pos().y()
                     self.last_move_h = event.pos().x()
                 else:
@@ -1996,6 +2046,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 return QtWidgets.QWidget.eventFilter(self, source, event)
         return QtWidgets.QWidget.eventFilter(self, source, event)
 
-    def isKeySpace(self,value):
-        #判断是否按下空格
+    def isKeySpace(self, value):
+        # 判断是否按下空格
         self.key_space_press = value

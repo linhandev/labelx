@@ -37,7 +37,8 @@ def dcm(file_path):
     # TODO: 检查这里体位是不是稳定正确
     data = sitk.GetArrayFromImage(itkImage)
 
-    return data, 3
+    # TODO: 每个series需要有一个名字,作为保存的时候文件夹的名字,现在直接用series所在文件夹的名字,研究能不能换成series名字,注意不能重复
+    return data, 3, osp.basename(file_path)
 
 
 # TODO: 在软件中添加旋转
@@ -51,7 +52,7 @@ def nii(file_path):
         dimension = 2
     else:
         dimension = 3
-    return data, dimension
+    return data, dimension, osp.basename(file_path)
 
 
 readers.add(nii, ["nii", "nii.gz"])
@@ -65,7 +66,7 @@ def image_reader(file_path):
         return
 
     image_pil = apply_exif_orientation(image_pil)
-    return image_pil, 2
+    return image_pil, 2, osp.basename(file_path)
 
 
 # TODO: 添加更多图片格式读取
@@ -79,7 +80,11 @@ def mkv(file_path):
 
 # 定义所有软件识别的拓展名和所属类别，全部要小写
 # TODO: 改成拓展名前面带点
-exts = {"Medical Image": ["dcm", "nii", "nii.gz"], "Image": ["png", "jpg", "jpeg"], "Video": ["mkv"]}
+exts = {
+    "Medical Image": ["dcm", "nii", "nii.gz"],
+    "Image": ["png", "jpg", "jpeg"],
+    "Video": ["mkv"],
+}
 all_exts = [n for names in exts.values() for n in names]
 exts["All"] = all_exts
 readers.add(exts, "ext")

@@ -10,12 +10,14 @@ import os.path as osp
 import io
 
 from qtpy import QtGui
+from qtpy import QtCore
 
 # TODO: 研究更好的相对import方式
 from labelx import utils
 from .utils.reader import readers
 from .label_file import LabelFile
 from labelx.label_file import LabelFileError
+from labelx.shape import Shape
 
 
 def wwwc(ww, wc, data):
@@ -32,17 +34,20 @@ class DataManager:
     def __init__(self, image_path, output_dir=None, ext=None):
         self.idx = 0
         self.image_path = image_path
-        self.image_name = osp.basename(self.image_path)
+        image_name = osp.basename(self.image_path)
         self.ext = None
-        img_name_low = self.image_name.lower()
+        img_name_low = image_name.lower()
         for ext in readers["ext"]["All"]:
             if img_name_low.endswith(ext):
                 self.ext = ext
 
+        # TODO: 扔这个异常之后main要接，给弹框
         if self.ext is None:
-            raise NotImplementedError(f"Reader for {self.image_path} is not implemented")
+            raise NotImplementedError(
+                f"Reader for {self.image_path} is not implemented"
+            )
 
-        self.raw, self.dimension = readers[self.ext](self.image_path)
+        self.raw, self.dimension, self.image_name = readers[self.ext](self.image_path)
 
         # TODO: transform这设计一下，调用方法，支持添加
         if self.dimension == 3:
@@ -57,7 +62,10 @@ class DataManager:
         self.gen_images()
         if output_dir == None:
             output_dir = osp.dirname(self.image_path)
+            if self.dimension == 3:
+                output_dir = osp.join(output_dir, utils.stripext(self.image_name))
 
+        print("init", output_dir)
         self.load_label(output_dir)
 
     def gen_images(self):
@@ -76,7 +84,10 @@ class DataManager:
             for idx in range(s[0]):
                 self.images.append(
                     QtGui.QImage(
-                        self.cube[idx].tobytes(), s[1], s[2], QtGui.QImage.Format_Grayscale8
+                        self.cube[idx].tobytes(),
+                        s[1],
+                        s[2],
+                        QtGui.QImage.Format_Grayscale8,
                     )  # TODO: grayscale16
                 )
 
@@ -85,18 +96,23 @@ class DataManager:
         print("output_dir", output_dir)
         print("shape", self.shape)
         self.labels = [LabelFile() for _ in range(self.shape[0])]
-        if output_dir is None:
+        if output_dir is None or not osp.exists(output_dir):
             return
         if self.dimension == 2:  # 那么标签是一个文件
             labelf_name = utils.stripext(self.image_name) + LabelFile.suffix
             self.labelf_path = osp.join(output_dir, labelf_name)
-            if osp.exists(self.labelf_path) and LabelFile.is_label_file(self.labelf_path):
+            if osp.exists(self.labelf_path) and LabelFile.is_label_file(
+                self.labelf_path
+            ):
                 try:
                     self.labels[0] = LabelFile(self.labelf_path)
                 except LabelFileError as e:
                     self.errorMessage(
                         self.tr("Error opening file"),
-                        self.tr("<p><b>%s</b></p>" "<p>Make sure <i>%s</i> is a valid label file.")
+                        self.tr(
+                            "<p><b>%s</b></p>"
+                            "<p>Make sure <i>%s</i> is a valid label file."
+                        )
                         % (e, label_file),
                     )
                     self.status(self.tr("Error reading %s") % label_file)
@@ -104,12 +120,47 @@ class DataManager:
         else:
             # TODO: 添加读取一系列json
             label_file_names = os.listdir(output_dir)
-            label_file_names = [n for n in label_file_names if n.endswith(LabelFile.suffix)]
+            label_file_names = [
+                n for n in label_file_names if n.endswith(LabelFile.suffix)
+            ]
             print("labelfiles", label_file_names)
             for idx, name in enumerate(label_file_names):
                 # TODO: 这里初步根据文件名确定下标，后期改成3djson里写下标
                 label_file = LabelFile(osp.join(output_dir, name))
                 self.labels[idx] = label_file
+        for labelfile in self.labels:
+            s = []
+            for shape in labelfile.shapes:
+                label = shape["label"]
+                points = shape["points"]
+                shape_type = shape["shape_type"]
+                flags = shape["flags"]
+                group_id = shape["group_id"]
+                other_data = shape["other_data"]
+
+                if not points:
+                    # skip point-empty shape
+                    continue
+
+                shape = Shape(
+                    label=label,
+                    shape_type=shape_type,
+                    group_id=group_id,
+                )
+                for x, y in points:
+                    shape.addPoint(QtCore.QPointF(x, y))
+                shape.close()
+
+                default_flags = {}
+                # if self._config["label_flags"]:
+                #     for pattern, keys in self._config["label_flags"].items():
+                #         if re.match(pattern, label):
+                #             for key in keys:
+                #                 default_flags[key] = False
+                shape.flags = default_flags
+                shape.flags.update(flags)
+                shape.other_data = other_data
+                s.append(shape)
 
     def __getitem__(self, idx):
         if idx >= self.shape[0] or idx < 0:
@@ -145,9 +196,8 @@ class DataManager:
     def save_label(self, filename, imagePath, idx):
         # TODO: 读入之后labelfile.shapes不是shape，是一个dict。对3d序列没翻到的片也需要做转换
         lf = LabelFile()
-        # print("save label ", filename, utils.stripext(filename))
 
-        if not osp.isfile(filename):
+        if osp.isdir(filename):
             filename = osp.join(filename, str(idx) + LabelFile.suffix)
         self.filename = filename
 
@@ -163,7 +213,7 @@ class DataManager:
             )
             return data
 
-        print(filename, len(self.labels[idx].shapes))
+        print("writing to", filename, len(self.labels[idx].shapes))
         shapes = [format_shape(s) for s in self.labels[idx].shapes]
 
         # TODO: 保存flag

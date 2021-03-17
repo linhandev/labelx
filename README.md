@@ -1,4 +1,11 @@
-测试修改
+项目repo以[github](https://github.com/linhandev/labelx)为主，考虑到国内用户可能访问github非常慢，也在百度云上做了一个镜像[gitea](http://182.61.31.110:3000/LinHan/labelx)。第一次clone可以选择从百度云，之后切换到github。
+```shell
+git clone http://182.61.31.110:3000/LinHan/labelx
+cd labelx
+git remote set-url https://github.com/linhandev/labelx
+```
+owner会尽量保证github和gitea in sync，但是如果因为只推送了gitea没有推送github导致错误，推送者需要负责解决！！望知悉
+
 <h1 align="center">
   <img src="labelx/icons/icon.png"><br/>labelx
 </h1>

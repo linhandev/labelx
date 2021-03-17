@@ -82,14 +82,14 @@ class LabelFile(object):
             else:
                 # relative path from label file to relative path from cwd
                 imagePath = osp.join(osp.dirname(filename), data["imagePath"])
-                imageData = self.load_image_file(imagePath)
+                # imageData = self.load_image_file(imagePath)
             flags = data.get("flags") or {}
             imagePath = data["imagePath"]
-            self._check_image_height_and_width(
-                base64.b64encode(imageData).decode("utf-8"),
-                data.get("imageHeight"),
-                data.get("imageWidth"),
-            )
+            # self._check_image_height_and_width(
+            #     base64.b64encode(imageData).decode("utf-8"),
+            #     data.get("imageHeight"),
+            #     data.get("imageWidth"),
+            # )
             shapes = [
                 dict(
                     label=s["label"],
@@ -113,7 +113,7 @@ class LabelFile(object):
         self.flags = flags
         self.shapes = shapes
         self.imagePath = imagePath
-        self.imageData = imageData
+        # self.imageData = imageData
         self.filename = filename
         self.otherData = otherData
 

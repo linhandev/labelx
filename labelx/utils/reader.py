@@ -22,24 +22,22 @@ file_path都是一个文件，dcm可以通过文件读序列
 readers = ComponentManager("readers")
 
 
+# 传到reader之前文件名检查过，一定存在
+
+
 @readers.add
 def dcm(file_path):
-    # 文件名前面检查过必须存在
-
     # TODO: 一个目录下有多个序列让用户选
     reader = sitk.ImageSeriesReader()
     dicom_series = reader.GetGDCMSeriesFileNames(osp.dirname(file_path))
+    print("series", dicom_series)
     reader.SetFileNames(dicom_series)
     itkImage = reader.Execute()
 
     # TODO: 检查这里体位是不是稳定正确
     data = sitk.GetArrayFromImage(itkImage)
-    if data.shape[0] == 1:
-        dimension = 2
-    else:
-        dimension = 3
 
-    return data, dimension
+    return data, 3
 
 
 # TODO: 在软件中添加旋转
@@ -59,11 +57,11 @@ def nii(file_path):
 readers.add(nii, ["nii", "nii.gz"])
 
 
-def image_reader(filename):
+def image_reader(file_path):
     try:
-        image_pil = PIL.Image.open(filename)
+        image_pil = PIL.Image.open(file_path)
     except IOError:
-        logger.error("Failed opening image file: {}".format(filename))
+        logger.error("Failed opening image file: {}".format(file_path))
         return
 
     image_pil = apply_exif_orientation(image_pil)
@@ -80,10 +78,21 @@ def mkv(file_path):
 
 
 # 定义所有软件识别的拓展名和所属类别，全部要小写
+# TODO: 改成拓展名前面带点
 exts = {"Medical Image": ["dcm", "nii", "nii.gz"], "Image": ["png", "jpg", "jpeg"], "Video": ["mkv"]}
 all_exts = [n for names in exts.values() for n in names]
 exts["All"] = all_exts
 readers.add(exts, "ext")
+
+
+def stripext(file_path):
+    for ext in exts["All"]:
+        # TODO: 会不会有一个拓展名是另一个的后缀的情况
+        if file_path.endswith(ext):
+            print(ext)
+            print(len(ext))
+            return file_path[: -len(ext) - 1]
+    return file_path
 
 
 if __name__ == "__main__":
@@ -94,6 +103,7 @@ if __name__ == "__main__":
     /home/lin/Desktop/med/volume-0.nii.gz
     /home/lin/Desktop/input/cat.jpg
     """
+    print(stripext("/home/test/test.dcm"))
     filters = ""
     for k, v in readers["ext"].items():
         filters += "%s (%s)" % (k, " ".join([f"*.{ext}" for ext in v]))

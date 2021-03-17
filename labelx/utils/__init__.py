@@ -27,3 +27,4 @@ from .qt import distancetoline
 from .qt import fmtShortcut
 
 from .reader import readers
+from .reader import stripext

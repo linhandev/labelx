@@ -800,12 +800,58 @@ class MainWindow(QtWidgets.QMainWindow):
         def apply_adjust(adjust_func):
             self.data.apply_adjust(adjust_func)
             image, _ = self.data()
-            print(image)
             self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
             self.paintCanvas()
 
         adjust_image_dialog = AdjustImageDialog(apply_adjust, self)
         adjust_image_dialog.exec_()
+
+    def turn(self, delta=1):
+        """3d序列中进行翻页"""
+        self.status(self.tr("Turning %s slice %d...") % (osp.basename(self.file_path), delta))
+        zoom = self.zoomWidget.value()
+        # 重置gui状态
+        self.resetState()
+        # TODO: 处理flag
+
+        self.canvas.setEnabled(False)
+        self.image, self.labelFile = self.data.turn(self.canvas.shapes, delta)
+        self.canvas.loadPixmap(QtGui.QPixmap.fromImage(self.image))
+
+        if self._config["keep_prev"]:
+            prev_shapes = self.canvas.shapes
+
+        flags = {k: False for k in self._config["flags"] or []}
+
+        self.loadLabels(self.labelFile.shapes)
+        if self.labelFile.flags is not None:
+            flags.update(self.labelFile.flags)
+        self.loadFlags(flags)
+
+        # TODO: 这里prev和新的会不会冲突
+        if self._config["keep_prev"] and self.noShapes():
+            self.loadShapes(prev_shapes, replace=False)
+            self.setDirty()
+        else:
+            self.setClean()
+        self.canvas.setEnabled(True)
+
+        # 设置放大倍数
+        is_initial_load = not self.zoom_values
+        self.setZoom(zoom)
+        # TODO: 这里zoom会闪动
+
+        # set scroll values # TODO: 这里整个不想用滚动，希望能通过鼠标拖动实现平滑的移动
+        for orientation in self.scroll_values:
+            if self.file_path in self.scroll_values[orientation]:
+                self.setScroll(orientation, self.scroll_values[orientation][self.file_path])
+
+        self.paintCanvas()
+        self.addRecentFile(self.file_path)
+        self.toggleActions(True)
+        self.canvas.setFocus()
+        self.status(self.tr("Loaded %s") % osp.basename(self.file_path))
+        return True
 
     # User Dialogs #
     def loadRecent(self, filename):
@@ -866,7 +912,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         path = osp.dirname(str(self.filename)) if self.filename else "."
         path = "/home/lin/Desktop/input/"  # TODO: 测试，去掉
-        # formats = ["*.{}".format(fmt.data().decode()) for fmt in QtGui.QImageReader.supportedImageFormats()]
         filters = "All Files (*);;"
         for k, v in readers["ext"].items():
             filters += "%s (%s);;" % (k, " ".join([f"*.{ext}" for ext in v]))
@@ -896,8 +941,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status(self.tr("Loading %s...") % osp.basename(str(file_path)))
 
         # TODO: 挪进去
+        print("loading file", file_path)
         self.data = DataManager(file_path, self.output_dir, ext=ext)
         self.image, labelFile = self.data()
+        self.imagePath = file_path
         try:
             pass
         except Exception as e:
@@ -939,7 +986,7 @@ class MainWindow(QtWidgets.QMainWindow):
         flags = {k: False for k in self._config["flags"] or []}  # TODO: 3d序列flag只存在第一个
         self.labelFile = labelFile
         if len(self.labelFile.shapes) != 0:
-            if isinstance(self.labelFile.shapes[0], labelx.shape.Shape):
+            if isinstance(self.labelFile.shapes[0], Shape):
                 self.canvas.shapes = self.labelFile.shapes
             self.loadLabels(self.labelFile.shapes)
             if self.labelFile.flags is not None:
@@ -950,6 +997,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.setDirty()
         else:
             self.setClean()
+        self.labelFile.shapes = self.canvas.shapes
         self.canvas.setEnabled(True)
 
         # 设置放大倍数
@@ -971,6 +1019,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addRecentFile(self.file_path)
         self.toggleActions(True)
         self.canvas.setFocus()
+        self.filename = file_path
         self.status(self.tr("Loaded %s") % osp.basename(str(file_path)))
         return True
 
@@ -1010,49 +1059,59 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def saveFile(self, _value=False):
         assert not self.image.isNull(), "cannot save empty image"
-        if self.labelFile:
-            # DL20180323 - overwrite when in directory
+        if self.labelFile.filename:
+            # 已经有文件,直接保存
             self._saveFile(self.labelFile.filename)
         elif self.output_file:
+            # 如果2d，直接存到output_file；如果3d，存到output_file这个文件夹
             self._saveFile(self.output_file)
             self.close()
         else:
+            # 原来没有文件，命令行没给存到那，弹框问用户
             self._saveFile(self.saveFileDialog())
 
     def saveFileAs(self, _value=False):
         assert not self.image.isNull(), "cannot save empty image"
         self._saveFile(self.saveFileDialog())
 
+    def _saveFile(self, filename):
+        # TODO: 处理savelabel扔的异常
+        if filename and self.data.save_all_labels(filename, self.imagePath):
+            self.addRecentFile(filename)
+            self.setClean()
+
     def saveFileDialog(self):
-        caption = self.tr("%s - Choose File") % __appname__
-        filters = self.tr("Label files (*%s)") % LabelFile.suffix
         if self.output_dir:
-            dlg = QtWidgets.QFileDialog(self, caption, self.output_dir, filters)
+            output_dir = self.output_dir
         else:
-            dlg = QtWidgets.QFileDialog(self, caption, self.currentPath(), filters)
-        dlg.setDefaultSuffix(LabelFile.suffix[1:])
-        dlg.setAcceptMode(QtWidgets.QFileDialog.AcceptSave)
-        dlg.setOption(QtWidgets.QFileDialog.DontConfirmOverwrite, False)
-        dlg.setOption(QtWidgets.QFileDialog.DontUseNativeDialog, False)
-        basename = osp.basename(osp.splitext(self.filename)[0])
-        if self.output_dir:
-            default_labelfile_name = osp.join(self.output_dir, basename + LabelFile.suffix)
+            # TODO: 和图像一个路径
+            output_dir = self.currentPath()
+
+        if self.data.dimension == 2:
+            caption = self.tr("%s - Choose File") % __appname__
+            filters = self.tr("Label files (*%s)") % LabelFile.suffix
+            basename = osp.basename(osp.splitext(self.filename)[0])
+            default_labelfile_name = osp.join(output_dir, basename + LabelFile.suffix)
+            dlg = QtWidgets.QFileDialog(self, caption, output_dir, filters)
+            dlg.setDefaultSuffix(LabelFile.suffix)
+            dlg.setAcceptMode(QtWidgets.QFileDialog.AcceptSave)  # act as save dlg
+            dlg.setOption(QtWidgets.QFileDialog.DontConfirmOverwrite, False)
+            dlg.setOption(QtWidgets.QFileDialog.DontUseNativeDialog, False)
+            filename = dlg.getSaveFileName(
+                self,
+                self.tr("Choose File"),
+                default_labelfile_name,
+                self.tr("Label files (*%s)") % LabelFile.suffix,
+            )
+
         else:
-            default_labelfile_name = osp.join(self.currentPath(), basename + LabelFile.suffix)
-        filename = dlg.getSaveFileName(
-            self,
-            self.tr("Choose File"),
-            default_labelfile_name,
-            self.tr("Label files (*%s)") % LabelFile.suffix,
-        )
+            caption = self.tr("%s - Choose Output Dir") % __appname__
+            filename = QtWidgets.QFileDialog.getExistingDirectory(self, caption, output_dir)
+
+        print("chose to save at", filename)
         if isinstance(filename, tuple):
             filename, _ = filename
         return filename
-
-    def _saveFile(self, filename):
-        if filename and self.saveLabels(filename):
-            self.addRecentFile(filename)
-            self.setClean()
 
     def closeFile(self, _value=False):
         if not self.mayContinue():
@@ -1062,6 +1121,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toggleActions(False)
         self.canvas.setEnabled(False)
         self.actions.saveAs.setEnabled(False)
+        self.data = None
 
     def getLabelFile(self):
         if self.filename.lower().endswith(".json"):
@@ -1181,7 +1241,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def resetState(self):
         self.labelList.clear()
         self.filename = None
-        self.imagePath = None
+        # TODO: 解决imagepath莫名重置问题,找到是哪掉的resetstate
+        # self.imagePath = None
         self.imageData = None
         self.labelFile = None
         self.otherData = None
@@ -1496,57 +1557,6 @@ class MainWindow(QtWidgets.QMainWindow):
             item.setCheckState(Qt.Checked if flag else Qt.Unchecked)
             self.flag_widget.addItem(item)
 
-    def saveLabels(self, filename):
-        lf = LabelFile()
-
-        def format_shape(s):
-            data = s.other_data.copy()
-            data.update(
-                dict(
-                    label=s.label.encode("utf-8") if PY2 else s.label,
-                    points=[(p.x(), p.y()) for p in s.points],
-                    group_id=s.group_id,
-                    shape_type=s.shape_type,
-                    flags=s.flags,
-                )
-            )
-            return data
-
-        shapes = [format_shape(item.shape()) for item in self.labelList]
-        flags = {}
-        for i in range(self.flag_widget.count()):
-            item = self.flag_widget.item(i)
-            key = item.text()
-            flag = item.checkState() == Qt.Checked
-            flags[key] = flag
-        try:
-            imagePath = osp.relpath(self.imagePath, osp.dirname(filename))
-            imageData = self.imageData if self._config["store_data"] else None
-            if osp.dirname(filename) and not osp.exists(osp.dirname(filename)):
-                os.makedirs(osp.dirname(filename))
-            lf.save(
-                filename=filename,
-                shapes=shapes,
-                imagePath=imagePath,
-                imageData=imageData,
-                imageHeight=self.image.height(),
-                imageWidth=self.image.width(),
-                otherData=self.otherData,
-                flags=flags,
-            )
-            self.labelFile = lf
-            items = self.fileListWidget.findItems(self.imagePath, Qt.MatchExactly)
-            if len(items) > 0:
-                if len(items) != 1:
-                    raise RuntimeError("There are duplicate files.")
-                items[0].setCheckState(Qt.Checked)
-            # disable allows next and previous image to proceed
-            # self.filename = filename
-            return True
-        except LabelFileError as e:
-            self.errorMessage(self.tr("Error saving label data"), self.tr("<b>%s</b>") % e)
-            return False
-
     def copySelectedShape(self):
         added_shapes = self.canvas.copySelectedShapes()
         self.labelList.clearSelection()
@@ -1697,52 +1707,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def togglePolygons(self, value):
         for item in self.labelList:
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
-
-    def turn(self, delta=1):
-        self.status(self.tr("Turning %s slice %d...") % (osp.basename(self.file_path), delta))
-
-        # 修改gui状态
-        self.resetState()
-        # TODO: 保存flag
-
-        self.canvas.setEnabled(False)
-        self.image, self.labelFile = self.data.turn(self.canvas.shapes, delta)
-        self.canvas.loadPixmap(QtGui.QPixmap.fromImage(self.image))
-
-        if self._config["keep_prev"]:
-            prev_shapes = self.canvas.shapes
-
-        flags = {k: False for k in self._config["flags"] or []}  # TODO: 3d序列flag只存在第一个
-
-        self.loadLabels(self.labelFile.shapes)
-        if self.labelFile.flags is not None:
-            flags.update(self.labelFile.flags)
-        self.loadFlags(flags)
-        if self._config["keep_prev"] and self.noShapes():  # TODO: 保存前一个和load进来的标签叠加
-            self.loadShapes(prev_shapes, replace=False)
-            self.setDirty()
-        else:
-            self.setClean()
-        self.canvas.setEnabled(True)
-
-        # 设置放大倍数
-        is_initial_load = not self.zoom_values
-        if self.file_path in self.zoom_values:
-            self.zoomMode = self.zoom_values[self.file_path][0]
-            self.setZoom(self.zoom_values[self.file_path][1])
-        elif is_initial_load or not self._config["keep_prev_scale"]:
-            self.adjustScale(initial=True)
-        # set scroll values # TODO: 这里整个不想用滚动，希望能通过鼠标拖动实现平滑的移动
-        for orientation in self.scroll_values:
-            if self.file_path in self.scroll_values[orientation]:
-                self.setScroll(orientation, self.scroll_values[orientation][self.file_path])
-
-        self.paintCanvas()
-        self.addRecentFile(self.file_path)
-        self.toggleActions(True)
-        self.canvas.setFocus()
-        self.status(self.tr("Loaded %s") % osp.basename(self.file_path))
-        return True
 
     def resizeEvent(self, event):
         if self.canvas and not self.image.isNull() and self.zoomMode != self.MANUAL_ZOOM:
@@ -1909,6 +1873,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         )
         self.importDirImages(targetDirPath)
+        # TODO: opendir之后应该立即
 
     @property
     def imageList(self):

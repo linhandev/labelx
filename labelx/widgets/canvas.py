@@ -28,7 +28,9 @@ class Canvas(QtWidgets.QWidget):
     drawingPolygon = QtCore.Signal(bool)
     edgeSelected = QtCore.Signal(bool, object)
     vertexSelected = QtCore.Signal(bool)
-    keySpacePress = QtCore.Signal(bool)  # 触发按下了键盘空格键
+    keyCtrlPress = QtCore.Signal(bool)  # 触发按下了键盘空格键
+    painting = QtCore.Signal(bool) #判断是否在处于画图期间
+
 
     CREATE, EDIT = 0, 1
 
@@ -75,6 +77,7 @@ class Canvas(QtWidgets.QWidget):
         self.movingShape = False
         self._painter = QtGui.QPainter()
         self._cursor = CURSOR_DEFAULT
+        self.isMove = False #是否处于移动状态
         # Menus:
         # 0: right-click without selection and dragging of shapes
         # 1: right-click with selection and dragging of shapes
@@ -316,6 +319,11 @@ class Canvas(QtWidgets.QWidget):
             pos = self.transformPos(ev.localPos())
         else:
             pos = self.transformPos(ev.posF())
+        #判断是不是正在处于画图期间移动图片
+        if ev.button() == QtCore.Qt.LeftButton and self.isMove:
+            if self.drawing():
+                self.painting.emit(True)
+            return
         if ev.button() == QtCore.Qt.LeftButton:
             if self.drawing():
                 if self.current:
@@ -357,6 +365,7 @@ class Canvas(QtWidgets.QWidget):
             self.selectShapePoint(pos, multiple_selection_mode=group_mode)
             self.prevPoint = pos
             self.repaint()
+
 
     def mouseReleaseEvent(self, ev):
         if ev.button() == QtCore.Qt.RightButton:
@@ -702,13 +711,15 @@ class Canvas(QtWidgets.QWidget):
             self.update()
         elif key == QtCore.Qt.Key_Return and self.canCloseShape():
             self.finalise()
-        elif key == QtCore.Qt.Key_Space:
-            self.keySpacePress.emit(True)
+        elif key == QtCore.Qt.Key_Control:
+            self.keyCtrlPress.emit(True)
+            self.isMove = True
 
     def keyReleaseEvent(self, ev):
         key = ev.key()
-        if key == QtCore.Qt.Key_Space:
-            self.keySpacePress.emit(False)
+        if key == QtCore.Qt.Key_Control:
+            self.keyCtrlPress.emit(False)
+            self.isMove = False
 
     def setLastLabel(self, text, flags):
         assert text

@@ -123,7 +123,12 @@ class MainWindow(QtWidgets.QMainWindow):
             Qt.Horizontal: {},
             Qt.Vertical: {},
         }  # key=filename, value=scroll_value
-        self.key_space_press = bool  # 判断是否按下空格键
+        self.key_ctrl_press = False  # 判断是否按下空格键
+        self.ispaint = False  #判断是否正在画图
+        self.paintx =0 #保存移动期间的数值
+        self.painty =0#保存移动期间的数值
+        self.last_move_v = 0#保存移动期间的数值
+        self.last_move_h = 0#保存移动期间的数值
 
         if filename is not None and osp.isdir(filename):
             self.importDirImages(filename, load=False)
@@ -781,14 +786,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scrollBars[Qt.Vertical].installEventFilter(self)
         self.scrollBars[Qt.Horizontal].installEventFilter(self)
         # TODO: 修改处理scroll的方式 3D - 通过滚动切换片 2D - ?
-        self.canvas.scrollRequest.connect(self.scrollRequest)
+        # self.canvas.scrollRequest.connect(self.scrollRequest)
 
         self.canvas.newShape.connect(self.newShape)
         self.canvas.shapeMoved.connect(self.setDirty)
         self.canvas.selectionChanged.connect(self.shapeSelectionChanged)
         self.canvas.drawingPolygon.connect(self.toggleDrawingSensitive)
         # 添加一个事件 ，判断是否按下了空格键
-        self.canvas.keySpacePress.connect(self.isKeySpace)
+        self.canvas.keyCtrlPress.connect(self.isKeyCtrl)
+        #添加一个事件，判断是否真正画图中一种）
+        self.canvas.keyCtrlPress.connect(self.isPaint)
         self.canvas.installEventFilter(self)
 
         self.setCentralWidget(scrollArea)
@@ -1951,16 +1958,12 @@ class MainWindow(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        if source == self.scrollBars[Qt.Vertical] or source == self.scrollBars[Qt.Horizontal]:
-            if event.type() == QtCore.QEvent.Wheel:  # 过滤滚动控制滑动条的事件
-                print("off")
-                return True
         if source == self.canvas:
-            if self.key_space_press:
+            if self.key_ctrl_press:
                 # 这个移动是根据鼠标的移动获取坐标点，设置滑动条的位置值
                 if event.type() == QtCore.QEvent.MouseMove:
                     self.setCursor(Qt.SizeAllCursor)
-                    if self.last_move_v == 0 or self.last_move_h == 0:
+                    if self.last_move_v == 0 and self.last_move_h == 0:
                         self.last_move_v = event.pos().y()
                         self.last_move_h = event.pos().x()
 
@@ -1972,15 +1975,28 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.scrollBars[Qt.Horizontal].setValue(
                         self.scrollBars[Qt.Horizontal].value() + distance_h
                     )
-                    self.last_move_v = event.pos().y()
-                    self.last_move_h = event.pos().x()
+                    self.last_move_v = self.painty = event.pos().y()
+                    self.last_move_h = self.paintx = event.pos().x()
+                elif event.type() == QtCore.QEvent.Paint and self.ispaint:
+                    self.last_move_v = self.painty
+                    self.last_move_h = self.paintx
+                elif event.type() == QtCore.QEvent.MouseButtonRelease:
+                    self.ispaint = False
                 else:
-                    self.last_move_v = 0
-                    self.last_move_h = 0
+                    self.last_move_v = self.painty = 0
+                    self.last_move_h = self.paintx = 0
                     self.setCursor(Qt.ArrowCursor)
+
+
+
+
                 return QtWidgets.QWidget.eventFilter(self, source, event)
         return QtWidgets.QWidget.eventFilter(self, source, event)
 
-    def isKeySpace(self, value):
+    def isKeyCtrl(self, value):
         # 判断是否按下空格
-        self.key_space_press = value
+        self.key_ctrl_press = value
+
+    def isPaint(self, value):
+        self.ispaint = value
+

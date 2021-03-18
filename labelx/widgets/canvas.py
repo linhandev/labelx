@@ -30,6 +30,7 @@ class Canvas(QtWidgets.QWidget):
     vertexSelected = QtCore.Signal(bool)
     keyCtrlPress = QtCore.Signal(bool)  # 触发按下了键盘空格键
     painting = QtCore.Signal(bool) #判断是否在处于画图期间
+    turn = QtCore.Signal(int) #使用鼠标滚动转图
 
 
     CREATE, EDIT = 0, 1
@@ -681,6 +682,12 @@ class Canvas(QtWidgets.QWidget):
                 # with Ctrl/Command key
                 # zoom
                 self.zoomRequest.emit(delta.y(), ev.pos())
+            else:
+                #判断是前滚还是后滚，然后发信号，给app 的self.turn
+                if delta.y() < 0:
+                    self.turn.emit(-1)
+                else:
+                    self.turn.emit(1)
             # 已经用鼠标控制图的移动，不再用滚动条控制
             # else:
             #     # scroll

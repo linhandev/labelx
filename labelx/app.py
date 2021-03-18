@@ -796,6 +796,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.keyCtrlPress.connect(self.isKeyCtrl)
         #添加一个事件，判断是否真正画图中一种）
         self.canvas.keyCtrlPress.connect(self.isPaint)
+        #鼠标滚动翻图
+        self.canvas.turn.connect(self.turn)
         self.canvas.installEventFilter(self)
 
         self.setCentralWidget(scrollArea)
@@ -830,47 +832,52 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def turn(self, delta=1):
         """3d序列中进行翻页"""
-        self.canvas.setEnabled(False)
-        shapes = self.canvas.shapes
-        zoom = self.zoomWidget.value()
-        image, labelFile = self.data.turn(shapes, delta)
-        if image is None:
-            return
-        self.resetState(turn=True)
-        self.image, self.labelFile = image, labelFile
-        self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
+        #如果还没加载图像，就按滚动或者按键盘ctrl+m翻页会报错，self.data还没创建
+        try:
+            # 为什么要一开始禁用画布的？不注释它滚动无法用
+            # self.canvas.setEnabled(False)
+            shapes = self.canvas.shapes
+            zoom = self.zoomWidget.value()
+            image, labelFile = self.data.turn(shapes, delta)
+            if image is None:
+                return
+            self.resetState(turn=True)
+            self.image, self.labelFile = image, labelFile
+            self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
 
-        if self._config["keep_prev"]:
-            prev_shapes = self.canvas.shapes
+            if self._config["keep_prev"]:
+                prev_shapes = self.canvas.shapes
 
-        # TODO: 处理flag
-        flags = {k: False for k in self._config["flags"] or []}
+            # TODO: 处理flag
+            flags = {k: False for k in self._config["flags"] or []}
 
-        self.loadShapes(self.labelFile.shapes)
-        if self.labelFile.flags is not None:
-            flags.update(self.labelFile.flags)
-        self.loadFlags(flags)
+            self.loadShapes(self.labelFile.shapes)
+            if self.labelFile.flags is not None:
+                flags.update(self.labelFile.flags)
+            self.loadFlags(flags)
 
-        if self._config["keep_prev"] and self.noShapes():
-            self.loadShapes(prev_shapes, replace=False)
-            self.setDirty()
-        else:
-            self.setClean()
+            if self._config["keep_prev"] and self.noShapes():
+                self.loadShapes(prev_shapes, replace=False)
+                self.setDirty()
+            else:
+                self.setClean()
 
-        self.setZoom(zoom)
+            self.setZoom(zoom)
 
-        # set scroll values # TODO: 这里整个不想用滚动，希望能通过鼠标拖动实现平滑的移动
-        # for orientation in self.scroll_values:
-        #     if self.image_file_path in self.scroll_values[orientation]:
-        #         self.setScroll(orientation, self.scroll_values[orientation][self.image_file_path])
-        self.canvas.setEnabled(True)
+            # set scroll values # TODO: 这里整个不想用滚动，希望能通过鼠标拖动实现平滑的移动
+            # for orientation in self.scroll_values:
+            #     if self.image_file_path in self.scroll_values[orientation]:
+            #         self.setScroll(orientation, self.scroll_values[orientation][self.image_file_path])
+            self.canvas.setEnabled(True)
 
-        self.paintCanvas()
-        # TODO: 闪动
-        self.addRecentFile(self.image_file_path)
-        self.toggleActions(True)
-        self.canvas.setFocus()
-        return True
+            self.paintCanvas()
+            self.addRecentFile(self.image_file_path)
+            self.toggleActions(True)
+            self.canvas.setFocus()
+            return True
+        except:
+            return False
+
 
     # User Dialogs #
     def loadRecent(self, filename):

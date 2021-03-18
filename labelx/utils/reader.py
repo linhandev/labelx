@@ -42,10 +42,7 @@ def dcm(file_path):
     return data, 3, folder_name
 
 
-# TODO: 在软件中添加旋转
-# TODO: 如果旋转可以保存修正过的 affine
-
-
+# TODO: 使用sitk进行读取
 def nii(file_path):
     itkImage = sitk.ReadImage(file_path)
     data = sitk.GetArrayFromImage(itkImage)

@@ -15,6 +15,7 @@ from qtpy import QtCore
 # TODO: 研究更好的相对import方式
 from labelx import utils
 from .utils.reader import readers
+from .utils import savers
 from .label_file import LabelFile
 from labelx.label_file import LabelFileError
 from labelx.shape import Shape
@@ -35,6 +36,7 @@ class DataManager:
         self.idx = 0  # 当前在第几片
         self.image_file_path = image_file_path  # 被标注文件路径，dcm也是序列中的一个文件
         self.labels = None  # 保存所有的labelfile，2d也是一个len是1的list
+        self.label_path = None
         file_name = osp.basename(self.image_file_path)
         self.ext = ext  # 创建的时候可以指定文件类型，使用的时候都以self.ext为准
         if self.ext is None:  # 没指定就推理
@@ -67,6 +69,8 @@ class DataManager:
         #         output_dir = osp.join(output_dir, self.stripext(self.image_name))
         print("Loading labels in __init__ from ", output_dir)
         self.load_label(output_dir)
+
+        print("Label Path", self.label_path)
 
     def stripext(self, string):
         if string.endswith(self.ext):
@@ -104,11 +108,16 @@ class DataManager:
             labelf_name = self.stripext(self.image_name) + LabelFile.suffix
             labelf_path = osp.join(output_dir, labelf_name)
             print("labelf_path", labelf_path)
-            if osp.exists(labelf_path) and LabelFile.is_label_file(labelf_path):
-                # TODO: 主调处理 LabelFileError
-                self.labels[0] = LabelFile(labelf_path)
+            if not osp.exists(labelf_path) or LabelFile.is_label_file(labelf_path):
+                return
+            # TODO: 主调处理 LabelFileError
+            self.labels[0] = LabelFile(labelf_path)
+            self.label_path = labelf_path
         else:
             output_dir = osp.join(output_dir, self.stripext(self.image_name))
+            if not osp.exists(output_dir):
+                return
+            self.label_path = output_dir
             labelf_names = [n for n in os.listdir(output_dir) if n.endswith(LabelFile.suffix)]
             print("Found label files", labelf_names)
             labelf_names.sort()
@@ -184,16 +193,24 @@ class DataManager:
         ----------
         output_path : str/None
             None： 保存到原来的路径，覆盖原来的labelfile
-            3D：保存到这个文件夹
-            2D：保存到这个文件
+            3D：在output_path创建self.file_name文件夹，把一系列json写进去
+            2D：在output_path中创建self.file_name.json，存到这个文件
         """
+        if self.dimension == 3 and osp.dirname(output_path) == self.label_path:
+            output_path = osp.dirname(self.label_path)
 
         for idx in range(len(self.labels)):
             self.save_label(idx, output_path)
 
-    def save_label(self, idx, output_path):
-        lf = LabelFile()
+        nii_label_path = osp.join(
+            output_path, self.stripext(self.image_name), self.stripext(self.image_name) + ".nii.gz"
+        )
+        print("nii path", nii_label_path)
+        savers[self.ext](self.labels, self.shape, nii_label_path)
 
+    def save_label(self, idx, output_path):
+
+        lf = LabelFile()
         # None的话路径不变，覆写
         if output_path is None:
             output_path = self.labels[idx].filename

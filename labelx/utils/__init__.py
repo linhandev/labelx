@@ -28,3 +28,5 @@ from .qt import fmtShortcut
 
 from .reader import readers
 from .reader import stripext
+
+from .saver import savers

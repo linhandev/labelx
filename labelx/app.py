@@ -1075,6 +1075,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def saveFile(self, _value=False):
         assert not self.image.isNull(), "cannot save empty image"
+        self.data.cache(self.canvas.shapes)
         print("aaaaaaaaaaaa", self.labelFile.filename, self.output_file)
         if self.labelFile.filename:
             # 已经有文件,直接保存
@@ -1102,7 +1103,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.setClean()
 
     def saveFileDialog(self):
-        self.data.cache(self.canvas.shapes)
         if self.output_dir:
             output_dir = self.output_dir
         else:
@@ -1953,7 +1953,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         if source == self.scrollBars[Qt.Vertical] or source == self.scrollBars[Qt.Horizontal]:
             if event.type() == QtCore.QEvent.Wheel:  # 过滤滚动控制滑动条的事件
-                print("off")
                 return True
         if source == self.canvas:
             if self.key_space_press:

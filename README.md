@@ -4,7 +4,7 @@ git clone http://182.61.31.110:3000/LinHan/labelx
 cd labelx
 git remote set-url https://github.com/linhandev/labelx
 ```
-owner会尽量保证github和gitea in sync，但是如果因为只推送了gitea没有推送github导致错误，推送者需要负责解决！！望知悉
+我们会尽量保证github和gitea in sync，但是如果因为只推送了gitea没有推送github导致错误，推送者需要负责解决！！望知悉
 
 <h1 align="center">
   <img src="labelx/icons/icon.png"><br/>labelx

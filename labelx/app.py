@@ -771,6 +771,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.canvas.zoomRequest.connect(self.zoomRequest)
 
+        # TODO: 这里用滚动区域但是滚动时间截获，解释成翻页，逻辑上好像有点不好理解，探索有没有更直观的实现方式
         scrollArea = QtWidgets.QScrollArea()
         # 禁止显示滚动条
         scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -1957,47 +1958,50 @@ class MainWindow(QtWidgets.QMainWindow):
         images.sort(key=lambda x: x.lower())
         return images
 
-    def eventFilter(self, source, event):
+    def eventFilter(self, source, ev):
         """
         事件过滤
         :param source:
-        :param event:
+        :param ev:
         :return:
         """
+
         if source == self.scrollBars[Qt.Vertical] or source == self.scrollBars[Qt.Horizontal]:
-            if event.type() == QtCore.QEvent.Wheel:  # 过滤滚动控制滑动条的事件
+            if ev.type() == QtCore.QEvent.Wheel:  # 过滤滚动控制滑动条的事件
                 return True
         if source == self.canvas:
-            if self.key_ctrl_press:
-                # 这个移动是根据鼠标的移动获取坐标点，设置滑动条的位置值
-                if event.type() == QtCore.QEvent.MouseMove:
-                    self.setCursor(Qt.SizeAllCursor)
-                    if self.last_move_v == 0 and self.last_move_h == 0:
-                        self.last_move_v = event.pos().y()
-                        self.last_move_h = event.pos().x()
+            # 这个移动是根据鼠标的移动获取坐标点，设置滑动条的位置值
+            if (
+                ev.type() == QtCore.QEvent.MouseMove
+                and int(ev.modifiers()) == QtCore.Qt.ControlModifier
+            ):
+                self.setCursor(Qt.SizeAllCursor)
+                if self.last_move_v == 0 and self.last_move_h == 0:
+                    self.last_move_v = ev.pos().y()
+                    self.last_move_h = ev.pos().x()
 
-                    distance_v = self.last_move_v - event.pos().y()
-                    distance_h = self.last_move_h - event.pos().x()
-                    self.scrollBars[Qt.Vertical].setValue(
-                        self.scrollBars[Qt.Vertical].value() + distance_v
-                    )
-                    self.scrollBars[Qt.Horizontal].setValue(
-                        self.scrollBars[Qt.Horizontal].value() + distance_h
-                    )
-                    self.last_move_v = self.painty = event.pos().y()
-                    self.last_move_h = self.paintx = event.pos().x()
-                elif event.type() == QtCore.QEvent.Paint and self.ispaint:
-                    self.last_move_v = self.painty
-                    self.last_move_h = self.paintx
-                elif event.type() == QtCore.QEvent.MouseButtonRelease:
-                    self.ispaint = False
-                else:
-                    self.last_move_v = self.painty = 0
-                    self.last_move_h = self.paintx = 0
-                    self.setCursor(Qt.ArrowCursor)
+                distance_v = self.last_move_v - ev.pos().y()
+                distance_h = self.last_move_h - ev.pos().x()
+                self.scrollBars[Qt.Vertical].setValue(
+                    self.scrollBars[Qt.Vertical].value() + distance_v
+                )
+                self.scrollBars[Qt.Horizontal].setValue(
+                    self.scrollBars[Qt.Horizontal].value() + distance_h
+                )
+                self.last_move_v = self.painty = ev.pos().y()
+                self.last_move_h = self.paintx = ev.pos().x()
+            elif ev.type() == QtCore.QEvent.Paint and self.ispaint:
+                self.last_move_v = self.painty
+                self.last_move_h = self.paintx
+            elif ev.type() == QtCore.QEvent.MouseButtonRelease:
+                self.ispaint = False
+            else:
+                self.last_move_v = self.painty = 0
+                self.last_move_h = self.paintx = 0
+                self.setCursor(Qt.ArrowCursor)
 
-                return QtWidgets.QWidget.eventFilter(self, source, event)
-        return QtWidgets.QWidget.eventFilter(self, source, event)
+            return QtWidgets.QWidget.eventFilter(self, source, ev)
+        return QtWidgets.QWidget.eventFilter(self, source, ev)
 
     def isKeyCtrl(self, value):
         # 判断是否按下空格

@@ -35,17 +35,16 @@ def med(label_files, shape, path):
 
             if s.label not in labels:
                 labels.append(s.label)
-            value = labels.index(s.label)
-            print(value)
+            value = labels.index(s.label) + 1
 
             poly = []
             for p in s.points:
                 poly.append([int(p.x()), int(p.y())])
             poly = np.array(poly)
-            print(poly)
-            print(poly[:, 0])
+
+            # TODO: 这里行列貌似反转，研究解决
             r, c = polygon(poly[:, 0], poly[:, 1], shape)
-            mask_slice[r, c] = value
+            mask_slice[c, r] = value
             # plt.imshow(mask_slice)
             # plt.show()
             mask[idx, :, :] = mask_slice

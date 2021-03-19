@@ -29,9 +29,8 @@ class Canvas(QtWidgets.QWidget):
     edgeSelected = QtCore.Signal(bool, object)
     vertexSelected = QtCore.Signal(bool)
     keyCtrlPress = QtCore.Signal(bool)  # 触发按下了键盘空格键
-    painting = QtCore.Signal(bool) #判断是否在处于画图期间
-    turn = QtCore.Signal(int) #使用鼠标滚动转图
-
+    painting = QtCore.Signal(bool)  # 判断是否在处于画图期间
+    turn_slice = QtCore.Signal(int)  # 使用鼠标滚动转图
 
     CREATE, EDIT = 0, 1
 
@@ -78,7 +77,7 @@ class Canvas(QtWidgets.QWidget):
         self.movingShape = False
         self._painter = QtGui.QPainter()
         self._cursor = CURSOR_DEFAULT
-        self.isMove = False #是否处于移动状态
+        self.isMove = False  # 是否处于移动状态
         # Menus:
         # 0: right-click without selection and dragging of shapes
         # 1: right-click with selection and dragging of shapes
@@ -320,7 +319,7 @@ class Canvas(QtWidgets.QWidget):
             pos = self.transformPos(ev.localPos())
         else:
             pos = self.transformPos(ev.posF())
-        #判断是不是正在处于画图期间移动图片
+        # 判断是不是正在处于画图期间移动图片
         if ev.button() == QtCore.Qt.LeftButton and self.isMove:
             if self.drawing():
                 self.painting.emit(True)
@@ -366,7 +365,6 @@ class Canvas(QtWidgets.QWidget):
             self.selectShapePoint(pos, multiple_selection_mode=group_mode)
             self.prevPoint = pos
             self.repaint()
-
 
     def mouseReleaseEvent(self, ev):
         if ev.button() == QtCore.Qt.RightButton:
@@ -683,11 +681,11 @@ class Canvas(QtWidgets.QWidget):
                 # zoom
                 self.zoomRequest.emit(delta.y(), ev.pos())
             else:
-                #判断是前滚还是后滚，然后发信号，给app 的self.turn
+                # 判断是前滚还是后滚，然后发信号，给app 的self.turn_slice
                 if delta.y() < 0:
-                    self.turn.emit(-1)
+                    self.turn_slice.emit(-1)
                 else:
-                    self.turn.emit(1)
+                    self.turn_slice.emit(1)
             # 已经用鼠标控制图的移动，不再用滚动条控制
             # else:
             #     # scroll
@@ -789,9 +787,9 @@ class Canvas(QtWidgets.QWidget):
     def restoreCursor(self):
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def resetState(self, turn=False):
+    def resetState(self, turn_slice=False):
         self.restoreCursor()
         self.shapesBackups = []
-        if not turn:
+        if not turn_slice:
             self.pixmap = None
         self.update()

@@ -42,15 +42,10 @@ def dcm(file_path):
     return data, 3, folder_name
 
 
-# TODO: 使用sitk进行读取
 def nii(file_path):
     itkImage = sitk.ReadImage(file_path)
     data = sitk.GetArrayFromImage(itkImage)
-    if data.shape[0] == 1:
-        dimension = 2
-    else:
-        dimension = 3
-    return data, dimension, osp.basename(file_path)
+    return data, 3, osp.basename(file_path)
 
 
 readers.add(nii, ["nii", "nii.gz"])

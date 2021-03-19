@@ -170,14 +170,14 @@ class MainWindow(QtWidgets.QMainWindow):
         shortcuts = self._config["shortcuts"]
         turn_next = action(
             self.tr("&Turn next"),
-            functools.partial(self.turn, 1),
+            functools.partial(self.turn_slice, 1),
             shortcuts["turn_next"],
             "turn next",
             self.tr("Open image or label file"),
         )
         turn_prev = action(
             self.tr("&Turn prev"),
-            functools.partial(self.turn, -1),
+            functools.partial(self.turn_slice, -1),
             shortcuts["turn_prev"],
             "turn prev",
             self.tr("Open image or label file"),
@@ -798,7 +798,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # 添加一个事件，判断是否真正画图中一种）
         self.canvas.keyCtrlPress.connect(self.isPaint)
         # 鼠标滚动翻图
-        self.canvas.turn.connect(self.turn)
+        self.canvas.turn_slice.connect(self.turn_slice)
         self.canvas.installEventFilter(self)
 
         self.setCentralWidget(scrollArea)
@@ -831,7 +831,7 @@ class MainWindow(QtWidgets.QMainWindow):
         adjust_image_dialog = AdjustImageDialog(apply_adjust, self)
         adjust_image_dialog.exec_()
 
-    def turn(self, delta=1):
+    def turn_slice(self, delta=1):
         """3d序列中进行翻页"""
         # 如果还没加载图像，就按滚动或者按键盘ctrl+m翻页会报错，self.data还没创建
         try:
@@ -839,10 +839,10 @@ class MainWindow(QtWidgets.QMainWindow):
             # self.canvas.setEnabled(False)
             shapes = self.canvas.shapes
             zoom = self.zoomWidget.value()
-            image, labelFile = self.data.turn(shapes, delta)
+            image, labelFile = self.data.turn_slice(shapes, delta)
             if image is None:
                 return
-            self.resetState(turn=True)
+            self.resetState(turn_slice=True)
             self.image, self.labelFile = image, labelFile
             self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
 
@@ -1273,7 +1273,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def status(self, message, delay=5000):
         self.statusBar().showMessage(message, delay)
 
-    def resetState(self, turn=False):
+    def resetState(self, turn_slice=False):
         """重置gui状态.
         在翻页或切换被标注数据的时候调用
         """
@@ -1283,9 +1283,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.imageData = None
         self.labelFile = None
         self.otherData = None
-        if not turn:
+        if not turn_slice:
             self.image_file_path = None
-        self.canvas.resetState(turn=turn)
+        self.canvas.resetState(turn_slice=turn_slice)
 
     def currentItem(self):
         items = self.labelList.selectedItems()
@@ -1988,16 +1988,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.scrollBars[Qt.Horizontal].setValue(
                     self.scrollBars[Qt.Horizontal].value() + distance_h
                 )
-                if ev.type() == QtCore.QEvent.MouseButtonPress:  #加了这句 打点不抖了
-                    self.last_move_v  = ev.pos().y()
-                    self.last_move_h  = ev.pos().x()
-            elif ev.type() == QtCore.QEvent.Paint :
+                if ev.type() == QtCore.QEvent.MouseButtonPress:  # 加了这句 打点不抖了
+                    self.last_move_v = ev.pos().y()
+                    self.last_move_h = ev.pos().x()
+            elif ev.type() == QtCore.QEvent.Paint:
                 return QtWidgets.QWidget.eventFilter(self, source, ev)
             elif ev.type() == QtCore.QEvent.MouseButtonRelease:
                 self.ispaint = False
             else:
-                self.last_move_v  = 0
-                self.last_move_h  = 0
+                self.last_move_v = 0
+                self.last_move_h = 0
                 self.setCursor(Qt.ArrowCursor)
 
             return QtWidgets.QWidget.eventFilter(self, source, ev)

@@ -171,7 +171,7 @@ class DataManager:
     def cache(self, shapes):
         self.labels[self.idx].shapes = shapes
 
-    def turn(self, shapes, delta):
+    def turn_slice(self, shapes, delta):
         self.cache(shapes)
         self.idx += delta
         print("-------")
@@ -202,14 +202,17 @@ class DataManager:
         for idx in range(len(self.labels)):
             self.save_label(idx, output_path)
 
-        nii_label_path = osp.join(
-            output_path, self.stripext(self.image_name), self.stripext(self.image_name) + ".nii.gz"
-        )
-        print("nii path", nii_label_path)
-        savers[self.ext](self.labels, self.shape, nii_label_path)
+        if self.ext in readers["ext"]["Medical Image"]:
+            print("saving")
+            nii_label_path = osp.join(
+                output_path,
+                self.stripext(self.image_name),
+                self.stripext(self.image_name) + ".nii.gz",
+            )
+            print("nii path", nii_label_path)
+            savers[self.ext](self.labels, self.shape, nii_label_path)
 
     def save_label(self, idx, output_path):
-
         lf = LabelFile()
         # None的话路径不变，覆写
         if output_path is None:
@@ -232,7 +235,6 @@ class DataManager:
             )
             return data
 
-        print("writing to", output_path, len(self.labels[idx].shapes))
         shapes = [format_shape(s) for s in self.labels[idx].shapes]
 
         # TODO: 保存flag
@@ -249,6 +251,7 @@ class DataManager:
         imageData = None
         if osp.dirname(output_path) and not osp.exists(osp.dirname(output_path)):
             os.makedirs(osp.dirname(output_path))
+        print("writing to", output_path, len(self.labels[idx].shapes))
         lf.save(
             filename=output_path,
             shapes=shapes,

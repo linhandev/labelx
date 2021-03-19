@@ -1988,16 +1988,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.scrollBars[Qt.Horizontal].setValue(
                     self.scrollBars[Qt.Horizontal].value() + distance_h
                 )
-                self.last_move_v = self.painty = ev.pos().y()
-                self.last_move_h = self.paintx = ev.pos().x()
-            elif ev.type() == QtCore.QEvent.Paint and self.ispaint:
-                self.last_move_v = self.painty
-                self.last_move_h = self.paintx
+                if ev.type() == QtCore.QEvent.MouseButtonPress:  #加了这句 打点不抖了
+                    self.last_move_v  = ev.pos().y()
+                    self.last_move_h  = ev.pos().x()
+            elif ev.type() == QtCore.QEvent.Paint :
+                return QtWidgets.QWidget.eventFilter(self, source, ev)
             elif ev.type() == QtCore.QEvent.MouseButtonRelease:
                 self.ispaint = False
             else:
-                self.last_move_v = self.painty = 0
-                self.last_move_h = self.paintx = 0
+                self.last_move_v  = 0
+                self.last_move_h  = 0
                 self.setCursor(Qt.ArrowCursor)
 
             return QtWidgets.QWidget.eventFilter(self, source, ev)
